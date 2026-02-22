@@ -1,0 +1,12 @@
+{
+  "name": "sequencer-studio-workspace",
+  "private": true,
+  "workspaces": [
+    "packages/*",
+    "apps/*"
+  ],
+  "scripts": {
+    "dev": "npm run dev --workspace=@sequencer/studio",
+    "build": "npm run build --workspaces --if-present"
+  }
+}

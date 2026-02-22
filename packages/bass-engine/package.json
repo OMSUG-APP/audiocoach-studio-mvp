@@ -1,0 +1,7 @@
+{
+  "name": "@sequencer/bass-engine",
+  "version": "1.0.0",
+  "main": "src/BassSynth.ts",
+  "types": "src/BassSynth.ts",
+  "dependencies": {}
+}

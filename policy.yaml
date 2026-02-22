@@ -1,0 +1,4 @@
+﻿name: projects/omsug-website/policies/iam.allowedPolicyMemberDomains
+spec:
+  rules:
+  - allowAll: true

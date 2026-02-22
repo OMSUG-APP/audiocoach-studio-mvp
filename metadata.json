@@ -1,0 +1,5 @@
+{
+  "name": "ACS1. Infrastructure & Monorepo Setup",
+  "description": "A professional-grade monorepo setup for a React PWA deployed to Google Cloud Run.",
+  "requestFramePermissions": []
+}

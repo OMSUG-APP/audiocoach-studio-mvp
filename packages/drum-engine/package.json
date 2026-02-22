@@ -1,0 +1,14 @@
+{
+  "name": "@sequencer/drum-engine",
+  "version": "1.0.0",
+  "description": "Web Audio synthesized drum engine",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "typescript": "^5.0.0"
+  }
+}
