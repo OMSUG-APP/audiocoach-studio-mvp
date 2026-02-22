@@ -1,20 +1,15 @@
-/**
- * @license
- * SPDX-License-Identifier: Apache-2.0
- */
-
 export type DrumInstrument = 'BD' | 'SD' | 'HC' | 'OH' | 'LT' | 'HT';
 
 export interface Step {
   active: boolean;
-  velocity: number; // 0 to 1
+  velocity: number;
 }
 
 export interface BassStep {
   active: boolean;
-  note: string; // e.g., 'C2'
+  note: string;
   velocity: number;
-  length: number; // in steps
+  length: number;
 }
 
 export interface Pattern {
@@ -37,9 +32,14 @@ export interface Project {
   swing: number;
   patterns: Pattern[];
   arrangement: ArrangementRegion[];
-  mixer: {
-    drums: { volume: number; eq: { low: number; mid: number; high: number } };
-    bass: { volume: number; eq: { low: number; mid: number; high: number } };
-    master: { volume: number; drive: number };
+  mixer: any; 
+  drumParams?: Record<string, { tune: number; decay: number }>;
+  // NEW: The Acid Package
+  bassParams?: {
+    waveform: 'sawtooth' | 'square';
+    cutoff: number;
+    resonance: number;
+    envMod: number;
+    decay: number;
   };
 }

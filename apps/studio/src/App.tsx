@@ -1,18 +1,12 @@
-/**
- * @license
- * SPDX-License-Identifier: Apache-2.0
- */
-
 import { useState, useEffect, useCallback } from 'react';
 import { TransportBar } from './components/TransportBar';
 import { PatternEditor } from './components/PatternEditor';
 import { PatternSwitcher } from './components/PatternSwitcher';
 import { MixerView } from './components/MixerView';
-import { ArrangementView } from './components/ArrangementView';
 import { useAudioEngine } from './hooks/useAudioEngine';
 import { INITIAL_PROJECT, INITIAL_PATTERN } from './constants';
 import { Project, DrumInstrument } from './types';
-import { Download, Save } from 'lucide-react';
+import { Download } from 'lucide-react';
 import { renderToWav } from './utils/export';
 
 export default function App() {
@@ -21,7 +15,6 @@ export default function App() {
     return saved ? JSON.parse(saved) : INITIAL_PROJECT;
   });
   const [activePatternId, setActivePatternId] = useState(project.patterns[0].id);
-  const [isNoteSelectorOpen, setIsNoteSelectorOpen] = useState<number | null>(null);
 
   const { isPlaying, currentStep, togglePlay } = useAudioEngine(project);
 
@@ -33,6 +26,23 @@ export default function App() {
     return () => clearTimeout(timeout);
   }, [project]);
 
+  // Spacebar Play/Pause
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Don't trigger if the user is typing in a text input (like the project name)
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) {
+        return;
+      }
+      
+      if (e.code === 'Space') {
+        e.preventDefault(); // Prevent the page from scrolling down
+        togglePlay();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [togglePlay]);
   const activePattern = project.patterns.find(p => p.id === activePatternId)!;
 
   const updateActivePattern = useCallback((updater: (p: typeof activePattern) => typeof activePattern) => {
@@ -52,10 +62,16 @@ export default function App() {
     }));
   };
 
-  const handleToggleBassStep = (step: number) => {
+  const handleToggleBassStep = (step: number, note: string) => {
     updateActivePattern(p => ({
       ...p,
-      bass: p.bass.map((s, i) => i === step ? { ...s, active: !s.active } : s)
+      bass: p.bass.map((s, i) => {
+        if (i === step) {
+          const isSameNote = s.note === note;
+          return { ...s, active: isSameNote ? !s.active : true, note };
+        }
+        return s;
+      })
     }));
   };
 
@@ -67,6 +83,29 @@ export default function App() {
       patterns: [...prev.patterns, newPattern]
     }));
     setActivePatternId(id);
+  };
+
+  const handleUpdateDrumParam = (inst: string, param: string, value: number) => {
+    setProject(prev => ({
+      ...prev,
+      drumParams: {
+        ...prev.drumParams,
+        [inst]: {
+          ...(prev.drumParams?.[inst] || { tune: 0.5, decay: 0.5 }),
+          [param]: value
+        }
+      }
+    }));
+  };
+
+  const handleUpdateBassParam = (param: string, value: any) => {
+    setProject(prev => ({
+      ...prev,
+      bassParams: {
+        ...(prev.bassParams || { waveform: 'sawtooth', cutoff: 0.5, resonance: 0.2, envMod: 0.5, decay: 0.5 }),
+        [param]: value
+      }
+    }));
   };
 
   const handleExport = async () => {
@@ -84,26 +123,26 @@ export default function App() {
   };
 
   return (
-    <div className="flex flex-col h-screen bg-black text-white overflow-hidden font-sans">
+    <div className="flex flex-col h-screen bg-[#0a0a0a] text-[#a1a1aa] overflow-hidden font-mono">
       {/* Header */}
-      <div className="flex items-center justify-between px-6 py-3 bg-zinc-950 border-b border-zinc-900">
+      <div className="flex items-center justify-between px-6 py-3 bg-[#121212] border-b border-[#27272a] shadow-md">
         <div className="flex items-center gap-3">
-          <div className="w-8 h-8 bg-emerald-500 rounded-lg flex items-center justify-center">
+          <div className="w-8 h-8 bg-[#f97316] rounded-sm flex items-center justify-center shadow-[0_0_10px_rgba(249,115,22,0.3)]">
             <div className="w-4 h-4 bg-black rounded-sm rotate-45" />
           </div>
           <input
             value={project.name}
             onChange={(e) => setProject({ ...project, name: e.target.value })}
-            className="bg-transparent font-bold text-sm focus:outline-none hover:bg-zinc-900 px-2 py-1 rounded transition-colors"
+            className="bg-transparent font-bold text-sm text-[#f4f4f5] focus:outline-none hover:bg-[#27272a] px-2 py-1 rounded transition-colors uppercase tracking-wider"
           />
         </div>
         <div className="flex items-center gap-4">
           <button
             onClick={handleExport}
-            className="flex items-center gap-2 px-3 py-1.5 bg-zinc-900 hover:bg-zinc-800 rounded-md text-xs font-bold transition-colors"
+            className="flex items-center gap-2 px-4 py-2 bg-[#1a1a1a] border border-[#3f3f46] hover:bg-[#27272a] hover:text-[#f4f4f5] rounded text-xs font-bold transition-colors uppercase tracking-widest"
           >
             <Download size={14} />
-            Export
+            Export WAV
           </button>
         </div>
       </div>
@@ -117,60 +156,43 @@ export default function App() {
         onSwingChange={(swing) => setProject({ ...project, swing })}
       />
 
-      <div className="flex flex-1 overflow-hidden">
-        <div className="flex-1 flex flex-col overflow-hidden">
-          <ArrangementView arrangement={project.arrangement} patterns={project.patterns} />
-          <PatternEditor
-            pattern={activePattern}
-            currentStep={currentStep}
-            onToggleDrumStep={handleToggleDrumStep}
-            onToggleBassStep={handleToggleBassStep}
-            onBassNoteClick={(step) => setIsNoteSelectorOpen(step)}
-          />
-          <PatternSwitcher
-            patterns={project.patterns}
-            activePatternId={activePatternId}
-            onSelectPattern={setActivePatternId}
-            onAddPattern={handleAddPattern}
-          />
-        </div>
-        <MixerView
-          mixer={project.mixer}
-          onMixerChange={(mixer) => setProject({ ...project, mixer })}
-        />
-      </div>
-
-      {/* Note Selector Modal */}
-      {isNoteSelectorOpen !== null && (
-        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50">
-          <div className="bg-zinc-900 p-8 rounded-2xl border border-zinc-800 shadow-2xl max-w-md w-full">
-            <h2 className="text-xl font-bold mb-6">Select Note</h2>
-            <div className="grid grid-cols-4 gap-3">
-              {['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'].map((note) => (
-                <button
-                  key={note}
-                  onClick={() => {
-                    updateActivePattern(p => ({
-                      ...p,
-                      bass: p.bass.map((s, i) => i === isNoteSelectorOpen ? { ...s, note: `${note}2` } : s)
-                    }));
-                    setIsNoteSelectorOpen(null);
-                  }}
-                  className="h-12 bg-zinc-800 hover:bg-indigo-500 rounded-lg font-mono transition-colors"
-                >
-                  {note}
-                </button>
-              ))}
-            </div>
-            <button
-              onClick={() => setIsNoteSelectorOpen(null)}
-              className="mt-8 w-full py-3 bg-zinc-800 hover:bg-zinc-700 rounded-xl font-bold transition-colors"
-            >
-              Cancel
-            </button>
+      <div className="flex flex-1 overflow-hidden p-4 gap-4">
+        <div className="flex-1 flex flex-col overflow-hidden gap-4">
+          
+          {/* Pattern Editor (Drums, Params, & Bass) */}
+          <div className="flex-1 bg-[#121212] border border-[#27272a] rounded-lg p-4 shadow-lg overflow-y-auto">
+            <PatternEditor
+              pattern={activePattern}
+              currentStep={currentStep}
+              onToggleDrumStep={handleToggleDrumStep}
+              onToggleBassStep={handleToggleBassStep}
+              drumParams={project.drumParams}
+              onUpdateDrumParam={handleUpdateDrumParam}
+              bassParams={project.bassParams}
+              onUpdateBassParam={handleUpdateBassParam}
+            />
           </div>
+
+          {/* Pattern Switcher (Bottom) */}
+          <div className="bg-[#121212] border border-[#27272a] rounded-lg p-4 shadow-lg h-24 flex-shrink-0">
+            <PatternSwitcher
+              patterns={project.patterns}
+              activePatternId={activePatternId}
+              onSelectPattern={setActivePatternId}
+              onAddPattern={handleAddPattern}
+            />
+          </div>
+          
         </div>
-      )}
+        
+        {/* Mixer (Right Side) */}
+        <div className="w-80 bg-[#121212] border border-[#27272a] rounded-lg p-4 shadow-lg overflow-y-auto">
+          <MixerView
+            mixer={project.mixer}
+            onMixerChange={(mixer) => setProject({ ...project, mixer })}
+          />
+        </div>
+      </div>
     </div>
   );
 }

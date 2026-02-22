@@ -1,5 +1,37 @@
 @import "tailwindcss";
 
 @theme {
-  --grid-template-columns-16: repeat(16, minmax(0, 1fr));
+  --color-synth-bg: #0a0a0a;
+  --color-synth-panel: #121212;
+  --color-synth-border: #27272a;
+  --color-synth-accent: #f97316; /* Orange */
+  --color-synth-accent-hover: #ea580c;
+  --color-synth-text: #a1a1aa;
+  --color-synth-text-bright: #f4f4f5;
+  --color-synth-active: #10b981; /* Emerald Green for active steps */
+}
+
+body {
+  background-color: var(--color-synth-bg);
+  color: var(--color-synth-text);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  margin: 0;
+  padding: 0;
+  overflow-x: hidden;
+}
+
+/* Custom Scrollbar for a hardware feel */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  background: var(--color-synth-bg);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--color-synth-border);
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #3f3f46;
 }
