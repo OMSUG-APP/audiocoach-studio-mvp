@@ -1,45 +1,58 @@
 export type DrumInstrument = 'BD' | 'SD' | 'HC' | 'OH' | 'LT' | 'HT';
 
-export interface Step {
-  active: boolean;
-  velocity: number;
-}
-
-export interface BassStep {
-  active: boolean;
-  note: string;
-  velocity: number;
-  length: number;
-}
+export interface Step { active: boolean; velocity: number; }
+export interface NoteStep { active: boolean; note: string; velocity: number; length: number; }
 
 export interface Pattern {
   id: string;
   name: string;
   drums: Record<DrumInstrument, Step[]>;
-  bass: BassStep[];
+  bass: NoteStep[];
+  synth: NoteStep[]; // NEW
 }
 
-export interface ArrangementRegion {
-  id: string;
-  patternId: string;
-  startStep: number;
-  length: number;
+export interface ArrangementRegion { id: string; patternId: string; startStep: number; length: number; }
+
+export interface DrumVoiceParams {
+  tune: number;
+  decay: number;
+  mute?: boolean;
+  solo?: boolean;
+}
+
+export interface ChannelMixer {
+  volume: number;
+  eq: { low: number; mid: number; high: number };
+  reverb?: number;
+  delay?: { time: number; feedback: number; mix: number };
+}
+
+export interface MasterDelay {
+  time: number;
+  feedback: number;
+  mix: number;
 }
 
 export interface Project {
-  name: string;
-  bpm: number;
+  name: string; 
+  bpm: number; 
   swing: number;
   patterns: Pattern[];
   arrangement: ArrangementRegion[];
-  mixer: any; 
-  drumParams?: Record<string, { tune: number; decay: number }>;
-  // NEW: The Acid Package
-  bassParams?: {
-    waveform: 'sawtooth' | 'square';
-    cutoff: number;
-    resonance: number;
-    envMod: number;
-    decay: number;
+  
+  drumParams?: Record<string, DrumVoiceParams>;
+  bassParams?: { waveform: 'sawtooth' | 'square'; cutoff: number; resonance: number; envMod: number; decay: number; };
+  synthParams?: { attack: number; release: number; cutoff: number; detune: number; };
+  
+  mixer: {
+    drums: ChannelMixer;
+    bass: ChannelMixer;
+    synth: ChannelMixer;
+    master: { 
+      volume: number; 
+      drive: number; 
+      reverb: number; 
+      delay: MasterDelay; 
+    };
   };
 }

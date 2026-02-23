@@ -29,13 +29,11 @@ export default function App() {
   // Spacebar Play/Pause
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      // Don't trigger if the user is typing in a text input (like the project name)
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) {
         return;
       }
-      
       if (e.code === 'Space') {
-        e.preventDefault(); // Prevent the page from scrolling down
+        e.preventDefault();
         togglePlay();
       }
     };
@@ -43,6 +41,7 @@ export default function App() {
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [togglePlay]);
+
   const activePattern = project.patterns.find(p => p.id === activePatternId)!;
 
   const updateActivePattern = useCallback((updater: (p: typeof activePattern) => typeof activePattern) => {
@@ -61,11 +60,24 @@ export default function App() {
       }
     }));
   };
-
+  
   const handleToggleBassStep = (step: number, note: string) => {
     updateActivePattern(p => ({
       ...p,
       bass: p.bass.map((s, i) => {
+        if (i === step) {
+          const isSameNote = s.note === note;
+          return { ...s, active: isSameNote ? !s.active : true, note };
+        }
+        return s;
+      })
+    }));
+  };
+
+  const handleToggleSynthStep = (step: number, note: string) => {
+    updateActivePattern(p => ({
+      ...p,
+      synth: (p.synth || Array(16).fill({ active: false, note: '', velocity: 0.6, length: 4 })).map((s, i) => {
         if (i === step) {
           const isSameNote = s.note === note;
           return { ...s, active: isSameNote ? !s.active : true, note };
@@ -85,13 +97,13 @@ export default function App() {
     setActivePatternId(id);
   };
 
-  const handleUpdateDrumParam = (inst: string, param: string, value: number) => {
+  const handleUpdateDrumParam = (inst: string, param: string, value: any) => {
     setProject(prev => ({
       ...prev,
       drumParams: {
         ...prev.drumParams,
         [inst]: {
-          ...(prev.drumParams?.[inst] || { tune: 0.5, decay: 0.5 }),
+          ...(prev.drumParams?.[inst] || { tune: 0.5, decay: 0.5, mute: false, solo: false }),
           [param]: value
         }
       }
@@ -103,6 +115,16 @@ export default function App() {
       ...prev,
       bassParams: {
         ...(prev.bassParams || { waveform: 'sawtooth', cutoff: 0.5, resonance: 0.2, envMod: 0.5, decay: 0.5 }),
+        [param]: value
+      }
+    }));
+  };
+
+  const handleUpdateSynthParam = (param: string, value: any) => {
+    setProject(prev => ({
+      ...prev,
+      synthParams: {
+        ...(prev.synthParams || { attack: 0.5, release: 0.5, cutoff: 0.5, detune: 0.5 }),
         [param]: value
       }
     }));
@@ -159,21 +181,24 @@ export default function App() {
       <div className="flex flex-1 overflow-hidden p-4 gap-4">
         <div className="flex-1 flex flex-col overflow-hidden gap-4">
           
-          {/* Pattern Editor (Drums, Params, & Bass) */}
+          {/* Pattern Editor */}
           <div className="flex-1 bg-[#121212] border border-[#27272a] rounded-lg p-4 shadow-lg overflow-y-auto">
             <PatternEditor
               pattern={activePattern}
               currentStep={currentStep}
               onToggleDrumStep={handleToggleDrumStep}
               onToggleBassStep={handleToggleBassStep}
+              onToggleSynthStep={handleToggleSynthStep}
               drumParams={project.drumParams}
               onUpdateDrumParam={handleUpdateDrumParam}
               bassParams={project.bassParams}
               onUpdateBassParam={handleUpdateBassParam}
+              synthParams={project.synthParams}
+              onUpdateSynthParam={handleUpdateSynthParam}
             />
           </div>
 
-          {/* Pattern Switcher (Bottom) */}
+          {/* Pattern Switcher */}
           <div className="bg-[#121212] border border-[#27272a] rounded-lg p-4 shadow-lg h-24 flex-shrink-0">
             <PatternSwitcher
               patterns={project.patterns}
@@ -185,7 +210,7 @@ export default function App() {
           
         </div>
         
-        {/* Mixer (Right Side) */}
+        {/* Mixer */}
         <div className="w-80 bg-[#121212] border border-[#27272a] rounded-lg p-4 shadow-lg overflow-y-auto">
           <MixerView
             mixer={project.mixer}

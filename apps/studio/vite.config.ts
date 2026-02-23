@@ -13,11 +13,15 @@ export default defineConfig(({mode}) => {
     resolve: {
       alias: {
         '@': path.resolve(__dirname, '.'),
+        // Tell Vite exactly where to find the raw TypeScript files for your local packages
+        '@sequencer/drum-engine': path.resolve(__dirname, '../../packages/drum-engine/src/index.ts'),
+        '@sequencer/bass-engine': path.resolve(__dirname, '../../packages/bass-engine/src/index.ts'),
+        '@sequencer/audio-utils': path.resolve(__dirname, '../../packages/audio-utils/src/index.ts'),
       },
     },
     server: {
       // HMR is disabled in AI Studio via DISABLE_HMR env var.
-      // Do not modifyâfile watching is disabled to prevent flickering during agent edits.
+      // Do not modify—file watching is disabled to prevent flickering during agent edits.
       hmr: process.env.DISABLE_HMR !== 'true',
     },
   };
