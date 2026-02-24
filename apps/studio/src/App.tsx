@@ -1,10 +1,9 @@
 import { useState, useEffect, useCallback } from 'react';
 import { TransportBar } from './components/TransportBar';
 import { PatternEditor } from './components/PatternEditor';
-import { PatternSwitcher } from './components/PatternSwitcher';
 import { MixerView } from './components/MixerView';
 import { useAudioEngine } from './hooks/useAudioEngine';
-import { INITIAL_PROJECT, INITIAL_PATTERN } from './constants';
+import { INITIAL_PROJECT } from './constants';
 import { Project, DrumInstrument } from './types';
 import { Download } from 'lucide-react';
 import { renderToWav } from './utils/export';
@@ -230,8 +229,8 @@ export default function App() {
       />
 
       <div className="flex flex-1 overflow-hidden p-4 gap-4">
-        <div className="flex-1 flex flex-col overflow-hidden gap-4">
-          
+        <div className="flex-1 flex flex-col overflow-hidden">
+
           {/* Pattern Editor */}
           <div className="flex-1 bg-[#121212] border border-[#27272a] rounded-lg p-4 shadow-lg overflow-y-auto">
             <PatternEditor
@@ -251,18 +250,8 @@ export default function App() {
             />
           </div>
 
-          {/* Pattern Switcher */}
-          <div className="bg-[#121212] border border-[#27272a] rounded-lg p-4 shadow-lg h-24 flex-shrink-0">
-            <PatternSwitcher
-              patterns={project.patterns}
-              activePatternId={activePatternId}
-              onSelectPattern={setActivePatternId}
-              onAddPattern={handleAddPattern}
-            />
-          </div>
-          
         </div>
-        
+
         {/* Mixer */}
         <div className="w-80 bg-[#121212] border border-[#27272a] rounded-lg p-4 shadow-lg overflow-y-auto">
           <MixerView
