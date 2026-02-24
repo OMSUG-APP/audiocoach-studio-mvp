@@ -229,7 +229,7 @@ export default function App() {
       />
 
       <div className="flex flex-1 overflow-hidden p-4 gap-4">
-        <div className="flex-[0.9] flex flex-col overflow-hidden">
+        <div className="flex-4 flex flex-col overflow-hidden">
 
           {/* Pattern Editor */}
           <div className="flex-1 bg-[#121212] border border-[#27272a] rounded-lg p-4 shadow-lg overflow-y-auto">
