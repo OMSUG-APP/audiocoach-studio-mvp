@@ -125,16 +125,18 @@ export const renderToWav = async (
       // Bass
       if (pattern.bass[step]?.active) {
         const engine = createBassEngine(ctx, bassInput);
-        const freq = noteToFreq(pattern.bass[step].note!);
-        const bp = project.bassParams || { waveform: 'sawtooth', cutoff: 0.5, resonance: 0.2, envMod: 0.5, decay: 0.5 };
+        const bp = project.bassParams || { waveform: 'sawtooth', octave: 2, cutoff: 0.5, resonance: 0.2, envMod: 0.5, decay: 0.5 };
+        const bassOctaveShift = (bp.octave || 2) - 2;
+        const freq = noteToFreq(pattern.bass[step].note!, bassOctaveShift);
         engine.playNote(time, freq, stepTime, 0.8, bp);
       }
 
       // Synth
       if (pattern.synth?.[step]?.active) {
         const engine = createSynthEngine(ctx, synthInput);
-        const freq = noteToFreq(pattern.synth[step].note!);
-        const sp = project.synthParams || { attack: 0.5, release: 0.5, cutoff: 0.5, detune: 0.5 };
+        const sp = project.synthParams || { octave: 4, attack: 0.5, release: 0.5, cutoff: 0.5, detune: 0.5 };
+        const synthOctaveShift = (sp.octave || 4) - 4;
+        const freq = noteToFreq(pattern.synth[step].note!, synthOctaveShift);
         engine.playNote(time, freq, stepTime * 4, 0.6, sp);
       }
     }
