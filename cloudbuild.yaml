@@ -1,0 +1,18 @@
+steps:
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      - 'build'
+      - '-t'
+      - 'europe-west2-docker.pkg.dev/$PROJECT_ID/sequencer-studio-repo/sequencer-studio:$BUILD_ID'
+      - '-t'
+      - 'europe-west2-docker.pkg.dev/$PROJECT_ID/sequencer-studio-repo/sequencer-studio:latest'
+      - '-f'
+      - 'apps/studio/Dockerfile'
+      - '.'
+
+images:
+  - 'europe-west2-docker.pkg.dev/$PROJECT_ID/sequencer-studio-repo/sequencer-studio:$BUILD_ID'
+  - 'europe-west2-docker.pkg.dev/$PROJECT_ID/sequencer-studio-repo/sequencer-studio:latest'
+
+options:
+  logging: LEGACY
