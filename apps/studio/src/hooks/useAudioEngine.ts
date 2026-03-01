@@ -62,7 +62,13 @@ export const useAudioEngine = (
   const sharedDelayReturnRef = useRef<GainNode | null>(null);
 
   const masterCompressorRef = useRef<DynamicsCompressorNode | null>(null);
-  const masterDriveRef = useRef<WaveShaperNode | null>(null);
+
+  // Shared drive bus (send effect — replaces master insert)
+  const drumDriveSendRef  = useRef<GainNode | null>(null);
+  const bassDriveSendRef  = useRef<GainNode | null>(null);
+  const synthDriveSendRef = useRef<GainNode | null>(null);
+  const sharedDriveRef       = useRef<WaveShaperNode | null>(null);
+  const sharedDriveReturnRef = useRef<GainNode | null>(null);
 
   // Per-drum-layer gains for mute/solo
   const drumLayerGainsRef = useRef<Record<string, GainNode>>({});
@@ -210,43 +216,43 @@ export const useAudioEngine = (
     if (bassReverbSendRef.current) bassReverbSendRef.current.gain.value = bass.reverb ?? 0;
     if (synthReverbSendRef.current) synthReverbSendRef.current.gain.value = synth.reverb ?? 0;
 
-    // Per-channel delay sends (mix = send amount)
-    const emptyDelay = { time: 0.3, feedback: 0.3, mix: 0 };
-    const drumDelay = drums.delay || emptyDelay;
-    const bassDelay = bass.delay || emptyDelay;
-    const synthDelay = synth.delay || emptyDelay;
+    // Per-channel delay sends
+    if (drumDelaySendRef.current)  drumDelaySendRef.current.gain.value  = drums.delay?.mix  ?? 0;
+    if (bassDelaySendRef.current)  bassDelaySendRef.current.gain.value  = bass.delay?.mix   ?? 0;
+    if (synthDelaySendRef.current) synthDelaySendRef.current.gain.value = synth.delay?.mix  ?? 0;
 
-    if (drumDelaySendRef.current) drumDelaySendRef.current.gain.value = drumDelay.mix ?? 0;
-    if (bassDelaySendRef.current) bassDelaySendRef.current.gain.value = bassDelay.mix ?? 0;
-    if (synthDelaySendRef.current) synthDelaySendRef.current.gain.value = synthDelay.mix ?? 0;
+    // Per-channel drive sends
+    if (drumDriveSendRef.current)  drumDriveSendRef.current.gain.value  = drums.driveSend  ?? 0;
+    if (bassDriveSendRef.current)  bassDriveSendRef.current.gain.value  = bass.driveSend   ?? 0;
+    if (synthDriveSendRef.current) synthDriveSendRef.current.gain.value = synth.driveSend  ?? 0;
 
-    // Shared delay time / feedback (driven by drums delay settings for now)
+    // Shared effects parameters
+    const fx = (m as any).effects || {};
+    const fxDelay  = fx.delay  || { time: 0.3, feedback: 0.3, return: 0.8 };
+    const fxReverb = fx.reverb || { return: 0.8 };
+    const fxDrive  = fx.drive  || { amount: 0, return: 0.8 };
+
     if (sharedDelayRef.current) {
       sharedDelayRef.current.delayTime.setTargetAtTime(
-        drumDelay.time ?? 0.3,
-        audioCtxRef.current?.currentTime || 0,
-        0.1
+        fxDelay.time ?? 0.3, audioCtxRef.current?.currentTime || 0, 0.05,
       );
     }
-    if (sharedDelayFeedbackRef.current) {
-      sharedDelayFeedbackRef.current.gain.value = drumDelay.feedback ?? 0.3;
-    }
+    if (sharedDelayFeedbackRef.current) sharedDelayFeedbackRef.current.gain.value = fxDelay.feedback ?? 0.3;
+    if (sharedDelayReturnRef.current)   sharedDelayReturnRef.current.gain.value   = fxDelay.return   ?? 0.8;
+    if (sharedReverbReturnRef.current)  sharedReverbReturnRef.current.gain.value  = fxReverb.return  ?? 0.8;
+    if (sharedDriveRef.current)         sharedDriveRef.current.curve = makeDistortionCurve((fxDrive.amount ?? 0) * 400);
+    if (sharedDriveReturnRef.current)   sharedDriveReturnRef.current.gain.value   = fxDrive.return   ?? 0.8;
 
     // Master compressor
     if (masterCompressorRef.current) {
       const comp = (master as any).compressor;
       if (comp) {
         masterCompressorRef.current.threshold.value = comp.threshold ?? -12;
-        masterCompressorRef.current.knee.value = comp.knee ?? 6;
-        masterCompressorRef.current.ratio.value = comp.ratio ?? 4;
-        masterCompressorRef.current.attack.value = comp.attack ?? 0.003;
-        masterCompressorRef.current.release.value = comp.release ?? 0.25;
+        masterCompressorRef.current.knee.value      = comp.knee      ?? 6;
+        masterCompressorRef.current.ratio.value     = comp.ratio     ?? 4;
+        masterCompressorRef.current.attack.value    = comp.attack    ?? 0.003;
+        masterCompressorRef.current.release.value   = comp.release   ?? 0.25;
       }
-    }
-
-    // Master drive
-    if (masterDriveRef.current) {
-      masterDriveRef.current.curve = makeDistortionCurve((master.drive ?? 0) * 400);
     }
   }, []);
 
@@ -258,12 +264,17 @@ export const useAudioEngine = (
       // ── Master bus ───────────────────────────────────────────
       masterGainRef.current = ctx.createGain();
       masterCompressorRef.current = ctx.createDynamicsCompressor();
-      masterDriveRef.current = ctx.createWaveShaper();
-      masterDriveRef.current.oversample = '4x';
 
       masterGainRef.current.connect(masterCompressorRef.current);
-      masterCompressorRef.current.connect(masterDriveRef.current);
-      masterDriveRef.current.connect(ctx.destination);
+      masterCompressorRef.current.connect(ctx.destination);
+
+      // ── Shared Drive bus (send effect) ───────────────────────
+      sharedDriveRef.current = ctx.createWaveShaper();
+      sharedDriveRef.current.oversample = '4x';
+      sharedDriveReturnRef.current = ctx.createGain();
+      sharedDriveReturnRef.current.gain.value = 0.8;
+      sharedDriveRef.current.connect(sharedDriveReturnRef.current);
+      sharedDriveReturnRef.current.connect(masterGainRef.current);
 
       // ── Shared Reverb bus ───────────────────────────────────
       sharedReverbRef.current = ctx.createConvolver();
@@ -297,10 +308,13 @@ export const useAudioEngine = (
 
       drumReverbSendRef.current = ctx.createGain(); drumReverbSendRef.current.gain.value = 0;
       drumDelaySendRef.current = ctx.createGain(); drumDelaySendRef.current.gain.value = 0;
+      drumDriveSendRef.current = ctx.createGain(); drumDriveSendRef.current.gain.value = 0;
       drumHighRef.current.connect(drumReverbSendRef.current);
       drumHighRef.current.connect(drumDelaySendRef.current);
+      drumHighRef.current.connect(drumDriveSendRef.current);
       drumReverbSendRef.current.connect(sharedReverbRef.current);
       drumDelaySendRef.current.connect(sharedDelayRef.current);
+      drumDriveSendRef.current.connect(sharedDriveRef.current!);
 
       // ── BASS channel ────────────────────────────────────────
       bassGainRef.current = ctx.createGain();
@@ -314,10 +328,13 @@ export const useAudioEngine = (
 
       bassReverbSendRef.current = ctx.createGain(); bassReverbSendRef.current.gain.value = 0;
       bassDelaySendRef.current = ctx.createGain(); bassDelaySendRef.current.gain.value = 0;
+      bassDriveSendRef.current = ctx.createGain(); bassDriveSendRef.current.gain.value = 0;
       bassHighRef.current.connect(bassReverbSendRef.current);
       bassHighRef.current.connect(bassDelaySendRef.current);
+      bassHighRef.current.connect(bassDriveSendRef.current);
       bassReverbSendRef.current.connect(sharedReverbRef.current);
       bassDelaySendRef.current.connect(sharedDelayRef.current);
+      bassDriveSendRef.current.connect(sharedDriveRef.current!);
 
       // ── SYNTH channel ───────────────────────────────────────
       synthGainRef.current = ctx.createGain();
@@ -331,10 +348,13 @@ export const useAudioEngine = (
 
       synthReverbSendRef.current = ctx.createGain(); synthReverbSendRef.current.gain.value = 0;
       synthDelaySendRef.current = ctx.createGain(); synthDelaySendRef.current.gain.value = 0;
+      synthDriveSendRef.current = ctx.createGain(); synthDriveSendRef.current.gain.value = 0;
       synthHighRef.current.connect(synthReverbSendRef.current);
       synthHighRef.current.connect(synthDelaySendRef.current);
+      synthHighRef.current.connect(synthDriveSendRef.current);
       synthReverbSendRef.current.connect(sharedReverbRef.current);
       synthDelaySendRef.current.connect(sharedDelayRef.current);
+      synthDriveSendRef.current.connect(sharedDriveRef.current!);
 
       // Apply initial mixer values to the newly created audio nodes
       applyMixerToAudio();
@@ -355,67 +375,66 @@ export const useAudioEngine = (
   useEffect(() => {
     const m = project?.mixer;
     const emptyChannel: ChannelMixer = { volume: 0, eq: { low: 0, mid: 0, high: 0 } };
-    const drums = m?.drums || emptyChannel; const bass = m?.bass || emptyChannel; const synth = m?.synth || emptyChannel; const master = m?.master || { volume: 1.0, drive: 0, reverb: 0, delay: { time: 0.3, feedback: 0.3, mix: 0 } };
-    
-    if (drumGainRef.current) drumGainRef.current.gain.value = drums.volume ?? 0.8;
-    if (bassGainRef.current) bassGainRef.current.gain.value = bass.volume ?? 0.8;
-    if (synthGainRef.current) synthGainRef.current.gain.value = synth.volume ?? 0.7;
+    const drums  = m?.drums  || emptyChannel;
+    const bass   = m?.bass   || emptyChannel;
+    const synth  = m?.synth  || emptyChannel;
+    const master = m?.master || { volume: 1.0, reverb: 0, delay: { time: 0.3, feedback: 0.3, mix: 0 } };
+
+    if (drumGainRef.current)   drumGainRef.current.gain.value   = drums.volume  ?? 0.8;
+    if (bassGainRef.current)   bassGainRef.current.gain.value   = bass.volume   ?? 0.8;
+    if (synthGainRef.current)  synthGainRef.current.gain.value  = synth.volume  ?? 0.7;
     if (masterGainRef.current) masterGainRef.current.gain.value = master.volume ?? 1.0;
 
-    if (drumLowRef.current) drumLowRef.current.gain.value = drums.eq?.low ?? 0;
-    if (drumMidRef.current) drumMidRef.current.gain.value = drums.eq?.mid ?? 0;
+    if (drumLowRef.current)  drumLowRef.current.gain.value  = drums.eq?.low  ?? 0;
+    if (drumMidRef.current)  drumMidRef.current.gain.value  = drums.eq?.mid  ?? 0;
     if (drumHighRef.current) drumHighRef.current.gain.value = drums.eq?.high ?? 0;
 
-    if (bassLowRef.current) bassLowRef.current.gain.value = bass.eq?.low ?? 0;
-    if (bassMidRef.current) bassMidRef.current.gain.value = bass.eq?.mid ?? 0;
+    if (bassLowRef.current)  bassLowRef.current.gain.value  = bass.eq?.low  ?? 0;
+    if (bassMidRef.current)  bassMidRef.current.gain.value  = bass.eq?.mid  ?? 0;
     if (bassHighRef.current) bassHighRef.current.gain.value = bass.eq?.high ?? 0;
 
-    if (synthLowRef.current) synthLowRef.current.gain.value = synth.eq?.low ?? 0;
-    if (synthMidRef.current) synthMidRef.current.gain.value = synth.eq?.mid ?? 0;
+    if (synthLowRef.current)  synthLowRef.current.gain.value  = synth.eq?.low  ?? 0;
+    if (synthMidRef.current)  synthMidRef.current.gain.value  = synth.eq?.mid  ?? 0;
     if (synthHighRef.current) synthHighRef.current.gain.value = synth.eq?.high ?? 0;
 
-    // Per-channel reverb sends
-    if (drumReverbSendRef.current) drumReverbSendRef.current.gain.value = drums.reverb ?? 0;
-    if (bassReverbSendRef.current) bassReverbSendRef.current.gain.value = bass.reverb ?? 0;
-    if (synthReverbSendRef.current) synthReverbSendRef.current.gain.value = synth.reverb ?? 0;
+    // Per-channel sends
+    if (drumReverbSendRef.current)  drumReverbSendRef.current.gain.value  = drums.reverb      ?? 0;
+    if (bassReverbSendRef.current)  bassReverbSendRef.current.gain.value  = bass.reverb       ?? 0;
+    if (synthReverbSendRef.current) synthReverbSendRef.current.gain.value = synth.reverb      ?? 0;
+    if (drumDelaySendRef.current)   drumDelaySendRef.current.gain.value   = drums.delay?.mix  ?? 0;
+    if (bassDelaySendRef.current)   bassDelaySendRef.current.gain.value   = bass.delay?.mix   ?? 0;
+    if (synthDelaySendRef.current)  synthDelaySendRef.current.gain.value  = synth.delay?.mix  ?? 0;
+    if (drumDriveSendRef.current)   drumDriveSendRef.current.gain.value   = drums.driveSend   ?? 0;
+    if (bassDriveSendRef.current)   bassDriveSendRef.current.gain.value   = bass.driveSend    ?? 0;
+    if (synthDriveSendRef.current)  synthDriveSendRef.current.gain.value  = synth.driveSend   ?? 0;
 
-    // Per-channel delay sends (mix = send amount)
-    const emptyDelay = { time: 0.3, feedback: 0.3, mix: 0 };
-    const drumDelay = drums.delay || emptyDelay;
-    const bassDelay = bass.delay || emptyDelay;
-    const synthDelay = synth.delay || emptyDelay;
+    // Shared effects parameters
+    const fx       = (m as any)?.effects || {};
+    const fxDelay  = fx.delay  || { time: 0.3, feedback: 0.3, return: 0.8 };
+    const fxReverb = fx.reverb || { return: 0.8 };
+    const fxDrive  = fx.drive  || { amount: 0, return: 0.8 };
 
-    if (drumDelaySendRef.current) drumDelaySendRef.current.gain.value = drumDelay.mix ?? 0;
-    if (bassDelaySendRef.current) bassDelaySendRef.current.gain.value = bassDelay.mix ?? 0;
-    if (synthDelaySendRef.current) synthDelaySendRef.current.gain.value = synthDelay.mix ?? 0;
-
-    // Shared delay time / feedback (driven by drums delay settings for now)
     if (sharedDelayRef.current) {
       sharedDelayRef.current.delayTime.setTargetAtTime(
-        drumDelay.time ?? 0.3,
-        audioCtxRef.current?.currentTime || 0,
-        0.1
+        fxDelay.time ?? 0.3, audioCtxRef.current?.currentTime || 0, 0.05,
       );
     }
-    if (sharedDelayFeedbackRef.current) {
-      sharedDelayFeedbackRef.current.gain.value = drumDelay.feedback ?? 0.3;
-    }
+    if (sharedDelayFeedbackRef.current) sharedDelayFeedbackRef.current.gain.value = fxDelay.feedback ?? 0.3;
+    if (sharedDelayReturnRef.current)   sharedDelayReturnRef.current.gain.value   = fxDelay.return   ?? 0.8;
+    if (sharedReverbReturnRef.current)  sharedReverbReturnRef.current.gain.value  = fxReverb.return  ?? 0.8;
+    if (sharedDriveRef.current)         sharedDriveRef.current.curve = makeDistortionCurve((fxDrive.amount ?? 0) * 400);
+    if (sharedDriveReturnRef.current)   sharedDriveReturnRef.current.gain.value   = fxDrive.return   ?? 0.8;
 
     // Master compressor
     if (masterCompressorRef.current) {
       const comp = (master as any).compressor;
       if (comp) {
         masterCompressorRef.current.threshold.value = comp.threshold ?? -12;
-        masterCompressorRef.current.knee.value = comp.knee ?? 6;
-        masterCompressorRef.current.ratio.value = comp.ratio ?? 4;
-        masterCompressorRef.current.attack.value = comp.attack ?? 0.003;
-        masterCompressorRef.current.release.value = comp.release ?? 0.25;
+        masterCompressorRef.current.knee.value      = comp.knee      ?? 6;
+        masterCompressorRef.current.ratio.value     = comp.ratio     ?? 4;
+        masterCompressorRef.current.attack.value    = comp.attack    ?? 0.003;
+        masterCompressorRef.current.release.value   = comp.release   ?? 0.25;
       }
-    }
-
-    // Master drive
-    if (masterDriveRef.current) {
-      masterDriveRef.current.curve = makeDistortionCurve((master.drive ?? 0) * 400);
     }
   }, [project?.mixer]);
 

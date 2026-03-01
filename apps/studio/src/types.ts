@@ -24,8 +24,9 @@ export interface DrumVoiceParams {
 export interface ChannelMixer {
   volume: number;
   eq: { low: number; mid: number; high: number };
-  reverb?: number;
-  delay?: { time: number; feedback: number; mix: number };
+  reverb?: number;                                    // send amount 0-1
+  delay?: { time: number; feedback: number; mix: number }; // mix = send amount
+  driveSend?: number;                                 // drive send amount 0-1
 }
 
 export interface MasterDelay {
@@ -85,9 +86,13 @@ export interface Project {
     bass: ChannelMixer;
     synth: ChannelMixer;
     sampler: ChannelMixer;
+    effects: {
+      reverb: { return: number };
+      delay:  { time: number; feedback: number; return: number };
+      drive:  { amount: number; return: number };
+    };
     master: {
       volume: number;
-      drive: number;
       reverb: number;
       delay: MasterDelay;
       compressor?: {
