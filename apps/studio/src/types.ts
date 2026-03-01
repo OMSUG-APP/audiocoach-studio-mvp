@@ -37,10 +37,10 @@ export interface MasterDelay {
 // ─── Sampler ────────────────────────────────────────────────────────────────
 
 export interface SamplerEnvelope {
-  attack: number;   // 0.001 – 2.0 s
-  decay: number;    // 0.001 – 2.0 s
-  sustain: number;  // 0.0   – 1.0 (amplitude level)
-  release: number;  // 0.001 – 4.0 s
+  start: number;    // 0.0 – 1.0  normalised start offset in the buffer
+  end: number;      // 0.0 – 1.0  normalised end offset in the buffer (> start)
+  length: number;   // 0.0 – 1.0  amplitude level during playback
+  envelope: number; // 0.001 – 4.0 s  fade-out / release time at the end
 }
 
 export interface SamplerFilter {
@@ -84,6 +84,7 @@ export interface Project {
     drums: ChannelMixer;
     bass: ChannelMixer;
     synth: ChannelMixer;
+    sampler: ChannelMixer;
     master: {
       volume: number;
       drive: number;

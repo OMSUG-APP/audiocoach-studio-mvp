@@ -3,9 +3,77 @@ import { SamplerPad, SamplerEnvelope, SamplerFilter, PadLoadStatus } from '../..
 import { PadEnvelopeControls } from './PadEnvelopeControls';
 import { PadFilterControls } from './PadFilterControls';
 
+// ─── Waveform display ──────────────────────────────────────────────────────────
+
+interface WaveformDisplayProps {
+  peaks: number[];       // 256 values, 0-1
+  color: string;
+  startPoint: number;    // 0-1 normalised
+  endPoint: number;      // 0-1 normalised
+}
+
+function WaveformDisplay({ peaks, color, startPoint, endPoint }: WaveformDisplayProps) {
+  const W = 512;
+  const H = 80;
+  const mid = H / 2;
+
+  // Build SVG polyline points for top + mirror
+  const topPts = peaks
+    .map((v, i) => `${(i / (peaks.length - 1)) * W},${mid - v * mid}`)
+    .join(' ');
+  const botPts = peaks
+    .map((v, i) => `${(i / (peaks.length - 1)) * W},${mid + v * mid}`)
+    .join(' ');
+
+  const startX = startPoint * W;
+  const endX   = endPoint   * W;
+
+  return (
+    <svg
+      viewBox={`0 0 ${W} ${H}`}
+      preserveAspectRatio="none"
+      className="w-full rounded"
+      style={{ height: 80, background: '#0A0A0B', display: 'block' }}
+    >
+      {/* Dimmed region before start */}
+      {startX > 0 && (
+        <rect x={0} y={0} width={startX} height={H} fill="#000" opacity={0.55} />
+      )}
+      {/* Dimmed region after end */}
+      {endX < W && (
+        <rect x={endX} y={0} width={W - endX} height={H} fill="#000" opacity={0.55} />
+      )}
+
+      {/* Waveform */}
+      <polyline points={topPts} fill="none" stroke={color} strokeWidth={1} opacity={0.8} />
+      <polyline points={botPts} fill="none" stroke={color} strokeWidth={1} opacity={0.8} />
+
+      {/* Centre line */}
+      <line x1={0} y1={mid} x2={W} y2={mid} stroke="#333" strokeWidth={0.5} />
+
+      {/* Start marker */}
+      <line x1={startX} y1={0} x2={startX} y2={H} stroke={color} strokeWidth={1.5} />
+      <polygon
+        points={`${startX},4 ${startX + 6},0 ${startX},0`}
+        fill={color}
+      />
+
+      {/* End marker */}
+      <line x1={endX} y1={0} x2={endX} y2={H} stroke={color} strokeWidth={1.5} />
+      <polygon
+        points={`${endX},4 ${endX - 6},0 ${endX},0`}
+        fill={color}
+      />
+    </svg>
+  );
+}
+
+// ─── Panel ─────────────────────────────────────────────────────────────────────
+
 interface PadDetailPanelProps {
   pad: SamplerPad;
   status: PadLoadStatus;
+  waveformPeaks?: number[] | null;
   onUpdateLabel: (label: string) => void;
   onUpdateVolume: (v: number) => void;
   onUpdatePitch: (v: number) => void;
@@ -19,7 +87,7 @@ interface PadDetailPanelProps {
 }
 
 export function PadDetailPanel({
-  pad, status,
+  pad, status, waveformPeaks,
   onUpdateLabel, onUpdateVolume, onUpdatePitch,
   onUpdateEnvelope, onUpdateFilter,
   onUpdateMute, onUpdateSolo,
@@ -83,6 +151,27 @@ export function PadDetailPanel({
           </button>
         )}
       </div>
+
+      {/* ── Waveform ────────────────────────────────────────────────────── */}
+      {loaded && waveformPeaks && waveformPeaks.length > 0 ? (
+        <div className="flex flex-col gap-1">
+          <WaveformDisplay
+            peaks={waveformPeaks}
+            color={pad.color}
+            startPoint={pad.envelope.start}
+            endPoint={pad.envelope.end}
+          />
+          <div className="flex justify-between px-0.5">
+            <span className="text-[8px] text-[#444] font-mono">0:00</span>
+            <span className="text-[8px] text-[#444] font-mono tracking-widest">waveform</span>
+            <span className="text-[8px] text-[#444] font-mono">end</span>
+          </div>
+        </div>
+      ) : loaded ? (
+        <div className="h-[80px] rounded bg-[#0A0A0B] flex items-center justify-center">
+          <span className="text-[9px] text-[#333] tracking-widest">computing waveform…</span>
+        </div>
+      ) : null}
 
       {/* ── Envelope ───────────────────────────────────────────────────── */}
       <PadEnvelopeControls

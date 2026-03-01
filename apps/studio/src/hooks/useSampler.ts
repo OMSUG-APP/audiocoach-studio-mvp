@@ -1,6 +1,6 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
 import {
-  SamplerPad, SamplerEnvelope, SamplerFilter, PadLoadStatus,
+  SamplerPad, SamplerEnvelope, SamplerFilter, PadLoadStatus, ChannelMixer,
 } from '../types';
 import {
   createDefaultPad, loadAudioFile, triggerSamplerPad, resolveGain,
@@ -39,11 +39,29 @@ export interface UseSamplerReturn {
 
   // Master
   updateMasterVolume: (volume: number) => void;
+
+  // Waveform peaks for display (256 values, 0-1 range; null if pad not loaded)
+  padWaveforms: (number[] | null)[];
+}
+
+// ─── Reverb IR ────────────────────────────────────────────────────────────────
+
+function createReverbIR(ctx: AudioContext, duration: number, decay: number): AudioBuffer {
+  const length = Math.max(1, Math.floor(ctx.sampleRate * duration));
+  const impulse = ctx.createBuffer(2, length, ctx.sampleRate);
+  const left  = impulse.getChannelData(0);
+  const right = impulse.getChannelData(1);
+  for (let i = 0; i < length; i++) {
+    const env = Math.pow(1 - i / length, decay);
+    left[i]  = (Math.random() * 2 - 1) * env;
+    right[i] = (Math.random() * 2 - 1) * env;
+  }
+  return impulse;
 }
 
 // ─── Hook ─────────────────────────────────────────────────────────────────────
 
-export function useSampler(): UseSamplerReturn {
+export function useSampler(mixerChannel?: ChannelMixer): UseSamplerReturn {
   // ── Serialisable state ──────────────────────────────────────────────────
   const [pads, setPads] = useState<SamplerPad[]>(
     () => Array.from({ length: 16 }, (_, i) => createDefaultPad(i)),
@@ -53,34 +71,123 @@ export function useSampler(): UseSamplerReturn {
   );
   const [activePadId, setActivePadId] = useState<number>(0);
   const [masterVolume, setMasterVolume] = useState<number>(1.0);
+  const [padWaveforms, setPadWaveforms] = useState<(number[] | null)[]>(
+    () => Array(16).fill(null),
+  );
 
   // ── Non-serialisable refs ───────────────────────────────────────────────
-  const audioCtxRef    = useRef<AudioContext | null>(null);
-  const masterGainRef  = useRef<GainNode | null>(null);
-  const buffersRef     = useRef<(AudioBuffer | null)[]>(Array(16).fill(null));
+  const audioCtxRef      = useRef<AudioContext | null>(null);
+  const masterGainRef    = useRef<GainNode | null>(null);
+
+  // EQ nodes (shared channel strip after master gain)
+  const eqLowRef   = useRef<BiquadFilterNode | null>(null);
+  const eqMidRef   = useRef<BiquadFilterNode | null>(null);
+  const eqHighRef  = useRef<BiquadFilterNode | null>(null);
+
+  // FX buses
+  const reverbRef      = useRef<ConvolverNode | null>(null);
+  const reverbSendRef  = useRef<GainNode | null>(null);
+  const delayRef       = useRef<DelayNode | null>(null);
+  const delayFbRef     = useRef<GainNode | null>(null);
+  const delaySendRef   = useRef<GainNode | null>(null);
+
+  const buffersRef       = useRef<(AudioBuffer | null)[]>(Array(16).fill(null));
   const activeSourcesRef = useRef<Map<number, AudioBufferSourceNode>>(new Map());
 
   // Keep a ref to pads so triggerPad never reads stale closure state
   const padsRef = useRef<SamplerPad[]>(pads);
   useEffect(() => { padsRef.current = pads; }, [pads]);
 
-  // ── AudioContext — lazy init on first user gesture ──────────────────────
+  // Keep a ref to the latest mixerChannel for use inside ensureCtx
+  const mixerChannelRef = useRef(mixerChannel);
+  useEffect(() => { mixerChannelRef.current = mixerChannel; }, [mixerChannel]);
+
+  // ── Apply mixer values to live audio nodes ──────────────────────────────
+  const applyMixerChannel = useCallback((ch: ChannelMixer) => {
+    const ctx = audioCtxRef.current;
+    if (!ctx) return;
+
+    if (masterGainRef.current) masterGainRef.current.gain.value = ch.volume ?? 0.8;
+    if (eqLowRef.current)  eqLowRef.current.gain.value  = ch.eq?.low  ?? 0;
+    if (eqMidRef.current)  eqMidRef.current.gain.value  = ch.eq?.mid  ?? 0;
+    if (eqHighRef.current) eqHighRef.current.gain.value = ch.eq?.high ?? 0;
+    if (reverbSendRef.current) reverbSendRef.current.gain.value = ch.reverb ?? 0;
+    if (delaySendRef.current)  delaySendRef.current.gain.value  = ch.delay?.mix ?? 0;
+    if (delayRef.current)
+      delayRef.current.delayTime.setTargetAtTime(ch.delay?.time ?? 0.3, ctx.currentTime, 0.01);
+    if (delayFbRef.current) delayFbRef.current.gain.value = ch.delay?.feedback ?? 0.3;
+  }, []);
+
+  // ── AudioContext + full FX chain — lazy init on first user gesture ──────
   const ensureCtx = useCallback((): AudioContext => {
     if (!audioCtxRef.current) {
       const ctx = new AudioContext();
+
+      // ── Master gain (controlled by SamplerView slider & mixer fader) ──
       const master = ctx.createGain();
-      master.gain.value = masterVolume;
-      master.connect(ctx.destination);
-      audioCtxRef.current = ctx;
-      masterGainRef.current = master;
+      master.gain.value = mixerChannelRef.current?.volume ?? 1.0;
+
+      // ── 3-band EQ ──────────────────────────────────────────────────────
+      const eqLow  = ctx.createBiquadFilter();
+      eqLow.type  = 'lowshelf';  eqLow.frequency.value  = 250;
+      const eqMid  = ctx.createBiquadFilter();
+      eqMid.type  = 'peaking';   eqMid.frequency.value  = 1000;
+      const eqHigh = ctx.createBiquadFilter();
+      eqHigh.type = 'highshelf'; eqHigh.frequency.value = 4000;
+
+      master.connect(eqLow);
+      eqLow.connect(eqMid);
+      eqMid.connect(eqHigh);
+      eqHigh.connect(ctx.destination); // dry path
+
+      // ── Reverb send ─────────────────────────────────────────────────────
+      const reverbSend   = ctx.createGain(); reverbSend.gain.value = 0;
+      const reverb       = ctx.createConvolver();
+      reverb.buffer      = createReverbIR(ctx, 2.5, 2.0);
+      const reverbReturn = ctx.createGain(); reverbReturn.gain.value = 0.8;
+      eqHigh.connect(reverbSend);
+      reverbSend.connect(reverb);
+      reverb.connect(reverbReturn);
+      reverbReturn.connect(ctx.destination);
+
+      // ── Delay send ──────────────────────────────────────────────────────
+      const delaySend   = ctx.createGain(); delaySend.gain.value = 0;
+      const delay       = ctx.createDelay(2.0);
+      const delayFb     = ctx.createGain(); delayFb.gain.value = 0.3;
+      const delayReturn = ctx.createGain(); delayReturn.gain.value = 0.8;
+      eqHigh.connect(delaySend);
+      delaySend.connect(delay);
+      delay.connect(delayFb);
+      delayFb.connect(delay); // feedback loop
+      delay.connect(delayReturn);
+      delayReturn.connect(ctx.destination);
+
+      // ── Store refs ──────────────────────────────────────────────────────
+      audioCtxRef.current     = ctx;
+      masterGainRef.current   = master;
+      eqLowRef.current        = eqLow;
+      eqMidRef.current        = eqMid;
+      eqHighRef.current       = eqHigh;
+      reverbRef.current       = reverb;
+      reverbSendRef.current   = reverbSend;
+      delayRef.current        = delay;
+      delayFbRef.current      = delayFb;
+      delaySendRef.current    = delaySend;
+
+      // Apply initial mixer values if already available
+      if (mixerChannelRef.current) applyMixerChannel(mixerChannelRef.current);
     }
+
     if (audioCtxRef.current.state === 'suspended') {
       audioCtxRef.current.resume().catch(() => {});
     }
     return audioCtxRef.current;
-  // masterVolume intentionally omitted — only used at creation time
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [applyMixerChannel]);
+
+  // Apply mixer changes whenever the prop updates
+  useEffect(() => {
+    if (mixerChannel && audioCtxRef.current) applyMixerChannel(mixerChannel);
+  }, [mixerChannel, applyMixerChannel]);
 
   // ── Generic pad state updater ───────────────────────────────────────────
   const updatePad = useCallback((padId: number, changes: Partial<SamplerPad>) => {
@@ -92,9 +199,7 @@ export function useSampler(): UseSamplerReturn {
     const ctx = ensureCtx();
 
     setPadLoadStatus(prev => {
-      const next = [...prev];
-      next[padId] = 'loading';
-      return next;
+      const next = [...prev]; next[padId] = 'loading'; return next;
     });
 
     const buffer = await loadAudioFile(ctx, file);
@@ -107,6 +212,24 @@ export function useSampler(): UseSamplerReturn {
     }
 
     buffersRef.current[padId] = buffer;
+
+    // Compute downsampled peak data for the waveform display (256 bins, 0-1)
+    const channelData = buffer.getChannelData(0);
+    const bins = 256;
+    const blockSize = Math.max(1, Math.floor(channelData.length / bins));
+    const peaks: number[] = [];
+    for (let i = 0; i < bins; i++) {
+      let max = 0;
+      const offset = i * blockSize;
+      for (let j = 0; j < blockSize; j++) {
+        const abs = Math.abs(channelData[offset + j] ?? 0);
+        if (abs > max) max = abs;
+      }
+      peaks.push(max);
+    }
+    setPadWaveforms(prev => {
+      const next = [...prev]; next[padId] = peaks; return next;
+    });
 
     // Trim extension and uppercase for label (max 14 chars)
     const name = file.name.replace(/\.[^/.]+$/, '').slice(0, 14).toUpperCase();
@@ -122,11 +245,12 @@ export function useSampler(): UseSamplerReturn {
     if (existing) { try { existing.stop(); } catch { /* already ended */ } }
 
     buffersRef.current[padId] = null;
-    setPads(prev =>
-      prev.map(p => p.id === padId ? createDefaultPad(padId) : p),
-    );
+    setPads(prev => prev.map(p => p.id === padId ? createDefaultPad(padId) : p));
     setPadLoadStatus(prev => {
       const next = [...prev]; next[padId] = 'idle'; return next;
+    });
+    setPadWaveforms(prev => {
+      const next = [...prev]; next[padId] = null; return next;
     });
   }, []);
 
@@ -139,26 +263,15 @@ export function useSampler(): UseSamplerReturn {
     const pad = padsRef.current[padId];
     if (resolveGain(pad, padsRef.current) === 0) return;
 
-    // Retrigger: stop previous playback on this pad
     const prev = activeSourcesRef.current.get(padId);
     if (prev) { try { prev.stop(); } catch { /* already ended */ } }
 
-    const src = triggerSamplerPad(
-      ctx,
-      buffer,
-      pad,
-      masterGainRef.current ?? ctx.destination,
-    );
-
+    const src = triggerSamplerPad(ctx, buffer, pad, masterGainRef.current ?? ctx.destination);
     activeSourcesRef.current.set(padId, src);
-    src.addEventListener('ended', () => {
-      activeSourcesRef.current.delete(padId);
-    });
+    src.addEventListener('ended', () => { activeSourcesRef.current.delete(padId); });
   }, [ensureCtx]);
 
-  // ── Sequencer-driven scheduling ────────────────────────────────────────
-  // Converts the sequencer's scheduled time to the sampler's AudioContext
-  // time so hits stay sample-accurate even with two separate AudioContexts.
+  // ── Sequencer-driven scheduling ─────────────────────────────────────────
   const schedulePadAtTime = useCallback((padId: number, seqTime: number, seqNow: number) => {
     const buffer = buffersRef.current[padId];
     if (!buffer) return;
@@ -171,45 +284,31 @@ export function useSampler(): UseSamplerReturn {
 
     if (ctx.state === 'suspended') ctx.resume().catch(() => {});
 
-    // How far in the future is seqTime relative to seqNow?
     const offsetSeconds = Math.max(0, seqTime - seqNow);
-    const triggerTime = ctx.currentTime + offsetSeconds;
-
-    triggerSamplerPad(ctx, buffer, pad, masterGainRef.current ?? ctx.destination, triggerTime);
+    triggerSamplerPad(ctx, buffer, pad, masterGainRef.current ?? ctx.destination, ctx.currentTime + offsetSeconds);
   }, []);
 
-  // ── Master volume ───────────────────────────────────────────────────────
+  // ── Master volume (SamplerView slider) ──────────────────────────────────
   const updateMasterVolume = useCallback((volume: number) => {
     setMasterVolume(volume);
     if (masterGainRef.current && audioCtxRef.current) {
-      masterGainRef.current.gain.setTargetAtTime(
-        volume, audioCtxRef.current.currentTime, 0.01,
-      );
+      masterGainRef.current.gain.setTargetAtTime(volume, audioCtxRef.current.currentTime, 0.01);
     }
   }, []);
 
   // ── Per-pad param updates ───────────────────────────────────────────────
-  const updatePadLabel    = useCallback((id: number, label: string) =>
-    updatePad(id, { label }), [updatePad]);
-
-  const updatePadVolume   = useCallback((id: number, volume: number) =>
-    updatePad(id, { volume }), [updatePad]);
-
-  const updatePadPitch    = useCallback((id: number, pitch: number) =>
-    updatePad(id, { pitch }), [updatePad]);
-
-  const updatePadMute     = useCallback((id: number, mute: boolean) =>
-    updatePad(id, { mute }), [updatePad]);
-
-  const updatePadSolo     = useCallback((id: number, solo: boolean) =>
-    updatePad(id, { solo }), [updatePad]);
+  const updatePadLabel    = useCallback((id: number, label: string) => updatePad(id, { label }), [updatePad]);
+  const updatePadVolume   = useCallback((id: number, volume: number) => updatePad(id, { volume }), [updatePad]);
+  const updatePadPitch    = useCallback((id: number, pitch: number) => updatePad(id, { pitch }), [updatePad]);
+  const updatePadMute     = useCallback((id: number, mute: boolean) => updatePad(id, { mute }), [updatePad]);
+  const updatePadSolo     = useCallback((id: number, solo: boolean) => updatePad(id, { solo }), [updatePad]);
 
   const updatePadEnvelope = useCallback((id: number, env: Partial<SamplerEnvelope>) =>
     setPads(prev => prev.map(p =>
       p.id === id ? { ...p, envelope: { ...p.envelope, ...env } } : p,
     )), []);
 
-  const updatePadFilter   = useCallback((id: number, filter: Partial<SamplerFilter>) =>
+  const updatePadFilter = useCallback((id: number, filter: Partial<SamplerFilter>) =>
     setPads(prev => prev.map(p =>
       p.id === id ? { ...p, filter: { ...p.filter, ...filter } } : p,
     )), []);
@@ -220,7 +319,7 @@ export function useSampler(): UseSamplerReturn {
   }, []);
 
   return {
-    pads, padLoadStatus, activePadId, masterVolume,
+    pads, padLoadStatus, activePadId, masterVolume, padWaveforms,
     loadPadFile, clearPad, triggerPad, schedulePadAtTime,
     setActivePad: setActivePadId,
     updatePadLabel, updatePadVolume, updatePadPitch,

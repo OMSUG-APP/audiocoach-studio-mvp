@@ -6,7 +6,7 @@ import { PadDetailPanel } from './PadDetailPanel';
 type SamplerViewProps = UseSamplerReturn;
 
 export function SamplerView({
-  pads, padLoadStatus, activePadId, masterVolume,
+  pads, padLoadStatus, activePadId, masterVolume, padWaveforms,
   loadPadFile, clearPad, triggerPad, setActivePad,
   updatePadLabel, updatePadVolume, updatePadPitch,
   updatePadEnvelope, updatePadFilter, updatePadMute, updatePadSolo,
@@ -63,6 +63,7 @@ export function SamplerView({
         <PadDetailPanel
           pad={activePad}
           status={padLoadStatus[activePadId]}
+          waveformPeaks={padWaveforms[activePadId]}
           onUpdateLabel={label  => updatePadLabel(activePadId, label)}
           onUpdateVolume={v     => updatePadVolume(activePadId, v)}
           onUpdatePitch={v      => updatePadPitch(activePadId, v)}

@@ -56,7 +56,7 @@ export function MixerView({ mixer, onMixerChange }: any) {
   const updateMixer = (section: string, param: string, value: number, subParam?: string) => {
     const newMixer = JSON.parse(JSON.stringify(mixer));
 
-    ['drums', 'bass', 'synth'].forEach(ch => {
+    ['drums', 'bass', 'synth', 'sampler'].forEach(ch => {
       if (!newMixer[ch]) newMixer[ch] = { volume: 0.8, eq: { low: 0, mid: 0, high: 0 } };
       if (newMixer[ch].reverb === undefined) newMixer[ch].reverb = 0;
       if (!newMixer[ch].delay) newMixer[ch].delay = { time: 0.3, feedback: 0.3, mix: 0 };
@@ -80,9 +80,10 @@ export function MixerView({ mixer, onMixerChange }: any) {
     };
   };
 
-  const drums  = getChannel('drums', 0.8);
-  const bass   = getChannel('bass', 0.8);
-  const synth  = getChannel('synth', 0.7);
+  const drums   = getChannel('drums', 0.8);
+  const bass    = getChannel('bass', 0.8);
+  const synth   = getChannel('synth', 0.7);
+  const sampler = getChannel('sampler', 0.8);
   const master = m.master || { volume: 1.0, drive: 0, compressor: { threshold: -12, knee: 6, ratio: 4, attack: 0.003, release: 0.25 } };
   const comp   = master.compressor || { threshold: -12, knee: 6, ratio: 4, attack: 0.003, release: 0.25 };
 
@@ -94,9 +95,10 @@ export function MixerView({ mixer, onMixerChange }: any) {
 
       <div className="flex flex-col gap-3 overflow-y-auto pr-2 pb-4">
 
-        <ChannelRack title="Drums" color="#10b981" section="drums" data={drums} updateMixer={updateMixer} />
-        <ChannelRack title="Bass"  color="#FF5F00" section="bass"  data={bass}  updateMixer={updateMixer} />
-        <ChannelRack title="Synth" color="#8b5cf6" section="synth" data={synth} updateMixer={updateMixer} />
+        <ChannelRack title="Drums"   color="#10b981" section="drums"   data={drums}   updateMixer={updateMixer} />
+        <ChannelRack title="Bass"    color="#FF5F00" section="bass"    data={bass}    updateMixer={updateMixer} />
+        <ChannelRack title="Synth"   color="#8b5cf6" section="synth"   data={synth}   updateMixer={updateMixer} />
+        <ChannelRack title="Sampler" color="#22d3ee" section="sampler" data={sampler} updateMixer={updateMixer} />
 
         {/* MASTER RACK */}
         <div

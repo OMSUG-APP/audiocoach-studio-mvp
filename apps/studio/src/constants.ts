@@ -57,9 +57,10 @@ export const INITIAL_PROJECT: Project = {
   arrangement: [{ id: 'a1', patternId: 'p1', startStep: 0, length: 16 }],
   drumKit: '808',
   mixer: {
-    drums: { volume: 0.8, eq: { low: 0, mid: 0, high: 0 }, reverb: 0, delay: { time: 0.3, feedback: 0.3, mix: 0 } },
-    bass: { volume: 0.8, eq: { low: 0, mid: 0, high: 0 }, reverb: 0, delay: { time: 0.3, feedback: 0.3, mix: 0 } },
-    synth: { volume: 0.7, eq: { low: 0, mid: 0, high: 0 }, reverb: 0, delay: { time: 0.3, feedback: 0.3, mix: 0 } },
+    drums:   { volume: 0.8, eq: { low: 0, mid: 0, high: 0 }, reverb: 0, delay: { time: 0.3, feedback: 0.3, mix: 0 } },
+    bass:    { volume: 0.8, eq: { low: 0, mid: 0, high: 0 }, reverb: 0, delay: { time: 0.3, feedback: 0.3, mix: 0 } },
+    synth:   { volume: 0.7, eq: { low: 0, mid: 0, high: 0 }, reverb: 0, delay: { time: 0.3, feedback: 0.3, mix: 0 } },
+    sampler: { volume: 0.8, eq: { low: 0, mid: 0, high: 0 }, reverb: 0, delay: { time: 0.3, feedback: 0.3, mix: 0 } },
     master: { volume: 1.0, drive: 0, reverb: 0.2, delay: { time: 0.3, feedback: 0.3, mix: 0 }, compressor: { threshold: -12, knee: 6, ratio: 4, attack: 0.003, release: 0.25 } }
   },
   bassParams: { waveform: 'sawtooth', octave: 2, cutoff: 0.5, resonance: 0.2, envMod: 0.5, decay: 0.5 },

@@ -3,10 +3,10 @@ import { SamplerPad, SamplerEnvelope, SamplerFilter } from '../types';
 // ─── Constants ────────────────────────────────────────────────────────────────
 
 export const DEFAULT_ENVELOPE: SamplerEnvelope = {
-  attack: 0.005,
-  decay: 0.1,
-  sustain: 0.8,
-  release: 0.3,
+  start: 0,      // play from the very beginning
+  end: 1,        // play to the very end
+  length: 1.0,   // full amplitude
+  envelope: 0.1, // short 100 ms fade-out
 };
 
 export const DEFAULT_FILTER: SamplerFilter = {
@@ -74,19 +74,19 @@ export function resolveGain(pad: SamplerPad, allPads: SamplerPad[]): number {
 // ─── Playback ─────────────────────────────────────────────────────────────────
 
 /**
- * Triggers one-shot playback of a pad sample.
+ * Triggers one-shot playback of a pad sample with start/end trim points.
  *
  * Signal chain:
- *   BufferSourceNode (pitch via detune)
+ *   BufferSourceNode (pitch via detune, offset + duration from start/end)
  *   → BiquadFilterNode (lowpass)
- *   → GainNode (ADSR envelope)
+ *   → GainNode (amplitude + fade-out)
  *   → destination
  *
- * ADSR strategy for one-shot samples:
- *   - Attack + Decay happen at the start as usual.
- *   - Sustain holds for the remainder of buffer playback.
- *   - Release fades from sustain level starting at
- *     max(0, buffer.duration - envelope.release) so the tail ends cleanly.
+ * Envelope strategy:
+ *   - 5 ms linear fade-in to prevent clicks regardless of start point.
+ *   - Holds at `length * volume` for the body of the sample.
+ *   - Fades out over `envelope` seconds, timed to finish at the end of the
+ *     trimmed region so the tail decays cleanly.
  *
  * Returns the source node so the caller can stop it early (retrigger).
  */
@@ -98,6 +98,11 @@ export function triggerSamplerPad(
   triggerTime: number = ctx.currentTime,
 ): AudioBufferSourceNode {
   const { envelope: env, filter: flt, volume, pitch } = pad;
+
+  // Normalised start/end → seconds
+  const startOffset  = Math.max(0, env.start) * buffer.duration;
+  const endOffset    = Math.min(1, Math.max(env.start + 0.001, env.end)) * buffer.duration;
+  const playDuration = Math.max(0.01, endOffset - startOffset);
 
   // Source
   const src = ctx.createBufferSource();
@@ -113,28 +118,24 @@ export function triggerSamplerPad(
   // Amplitude envelope
   const vca = ctx.createGain();
   const t0 = triggerTime;
-  const t1 = t0 + Math.max(env.attack, 0.001);   // end of attack
-  const t2 = t1 + Math.max(env.decay, 0.001);    // end of decay → sustain level
-  const sustainLevel = env.sustain * volume;
-  const bufDuration = buffer.duration;
-
-  // Start release so it ends exactly when the buffer ends
-  const releaseStart = Math.max(t2, t0 + bufDuration - env.release);
-  const releaseEnd = releaseStart + Math.max(env.release, 0.001);
+  const level = env.length * volume;
+  const fadeInEnd = t0 + 0.005;                             // 5 ms click-prevention
+  const fadeOutDur = Math.max(0.005, env.envelope);
+  const fadeOutStart = t0 + Math.max(0, playDuration - fadeOutDur);
+  const fadeOutEnd   = fadeOutStart + fadeOutDur;
 
   vca.gain.setValueAtTime(0, t0);
-  vca.gain.linearRampToValueAtTime(volume, t1);
-  vca.gain.linearRampToValueAtTime(sustainLevel, t2);
-  vca.gain.setValueAtTime(sustainLevel, releaseStart);
-  vca.gain.linearRampToValueAtTime(0.0001, releaseEnd);
+  vca.gain.linearRampToValueAtTime(level, fadeInEnd);
+  vca.gain.setValueAtTime(level, fadeOutStart);
+  vca.gain.linearRampToValueAtTime(0.0001, fadeOutEnd);
 
   // Connect
   src.connect(lpf);
   lpf.connect(vca);
   vca.connect(destination);
 
-  src.start(t0);
-  src.stop(releaseEnd + 0.02);
+  src.start(t0, startOffset, playDuration);
+  src.stop(fadeOutEnd + 0.02);
 
   // Auto-disconnect after playback to avoid node leaks
   src.onended = () => {

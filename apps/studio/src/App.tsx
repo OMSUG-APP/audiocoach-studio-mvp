@@ -21,7 +21,7 @@ export default function App() {
   const [isExporting, setIsExporting] = useState(false);
   const [activeTab, setActiveTab] = useState<MainTab>('sequencer');
 
-  const sampler = useSampler();
+  const sampler = useSampler(project.mixer.sampler);
   const { isPlaying, currentStep, togglePlay } = useAudioEngine(project, sampler.schedulePadAtTime);
 
   // Persistence
