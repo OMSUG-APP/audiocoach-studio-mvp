@@ -1,7 +1,8 @@
 import React, { useRef, useState } from 'react';
 import { SamplerPad, PadLoadStatus } from '../../types';
 
-interface SamplerPadTileProps {
+export interface SamplerPadTileProps {
+  key?: React.Key;
   pad: SamplerPad;
   status: PadLoadStatus;
   isActive: boolean;

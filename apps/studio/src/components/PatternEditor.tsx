@@ -43,9 +43,8 @@ const SYNTH_NOTES = ['B', 'A#', 'A', 'G#', 'G', 'F#', 'F', 'E', 'D#', 'D', 'C#',
 const GRID_MIN_W  = 'min-w-[520px]';
 
 // ─── Pill button ──────────────────────────────────────────────────────────────
-const Pill = ({ label, active, color = '#FF5F00', onClick }: {
-  label: string; active: boolean; color?: string; onClick: () => void;
-}) => (
+interface PillProps { key?: React.Key; label: string; active: boolean; color?: string; onClick: () => void }
+const Pill = ({ label, active, color = '#FF5F00', onClick }: PillProps) => (
   <button
     onClick={onClick}
     className="px-2 py-0.5 text-[9px] font-bold rounded transition-colors uppercase tracking-widest"
