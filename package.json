@@ -8,5 +8,8 @@
   "scripts": {
     "dev": "npm run dev --workspace=@sequencer/studio",
     "build": "npm run build --workspaces --if-present"
+  },
+  "devDependencies": {
+    "playwright": "^1.58.2"
   }
 }
