@@ -120,8 +120,8 @@ export const createSynthEngine = (ctx: BaseAudioContext, dest: AudioNode) => {
     filter.type = 'lowpass';
     filter.frequency.setValueAtTime(200 + (p.cutoff * 6000), time);
     
-    const attackTime = 0.05 + (p.attack * 2.0);
-    const releaseTime = 0.1 + (p.release * 3.0);
+    const attackTime = 0.01 + (p.attack * 0.4);   // 10ms–410ms — fits within note gate
+    const releaseTime = 0.05 + (p.release * 1.5); // 50ms–1550ms
     const totalDuration = duration + releaseTime;
 
     gain.gain.setValueAtTime(0, time);
