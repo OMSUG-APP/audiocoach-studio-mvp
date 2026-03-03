@@ -1,6 +1,16 @@
-import { StepEvent, Pattern, TrackType } from '@sequencer/contracts';
+import { Pattern, DrumTrackData } from '@sequencer/contracts';
 import { Transport } from './Transport.js';
 import { bpmToStepDuration, calculateStepTime } from './timing.js';
+
+export interface StepEvent {
+  stepIndex: number;
+  patternId: string;
+  trackType: 'drum' | 'bass';
+  lane: string;
+  preciseTime: number;
+  velocity: number;
+  noteData?: unknown;
+}
 
 export type OnStepCallback = (event: StepEvent) => void;
 
@@ -81,17 +91,32 @@ export class Scheduler {
       : time;
 
     for (const track of pattern.tracks) {
-      for (const [laneId, steps] of Object.entries(track.lanes)) {
-        const step = steps[stepIndex];
-        if (step && step.velocity > 0) {
+      if (track.type === 'drum') {
+        const drumTrack = track as DrumTrackData;
+        for (const [laneId, steps] of Object.entries(drumTrack.lanes)) {
+          const step = steps[stepIndex];
+          if (step?.active) {
+            this.onStep({
+              stepIndex,
+              patternId,
+              trackType: 'drum',
+              lane: laneId,
+              preciseTime: swungTime,
+              velocity: step.velocity,
+            });
+          }
+        }
+      } else if (track.type === 'bass') {
+        const bassStep = track.steps[stepIndex];
+        if (bassStep?.active) {
           this.onStep({
             stepIndex,
             patternId,
-            trackType: track.type,
-            lane: laneId,
+            trackType: 'bass',
+            lane: 'bass',
             preciseTime: swungTime,
-            velocity: step.velocity,
-            noteData: step.data || step.note
+            velocity: bassStep.velocity,
+            noteData: bassStep.note,
           });
         }
       }

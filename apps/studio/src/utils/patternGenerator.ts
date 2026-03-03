@@ -151,7 +151,7 @@ export function generateBassPattern(
   const { primary, secondary } = GROOVE_POOLS[style];
 
   // Shuffle full pool, bias toward primary positions by placing them first
-  const pool    = [...primary.sort(() => r() - 0.5), ...secondary.sort(() => r() - 0.5)];
+  const pool    = [...[...primary].sort(() => r() - 0.5), ...[...secondary].sort(() => r() - 0.5)];
   const active  = new Set(pool.slice(0, count));
 
   // Find fifth index in scale intervals (semitone 7)
@@ -240,7 +240,7 @@ export function generateSamplerSteps(
       .filter(i => !baseGroove.includes(i))
       .sort(() => r() - 0.5);
 
-    const pool      = [...baseGroove.sort(() => r() - 0.5), ...extraSteps];
+    const pool      = [...[...baseGroove].sort(() => r() - 0.5), ...extraSteps];
     const activeSet = new Set(pool.slice(0, count));
     return Array.from({ length: 16 }, (_, i) => activeSet.has(i));
   });

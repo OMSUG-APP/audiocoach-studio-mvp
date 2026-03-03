@@ -40,7 +40,8 @@ export class DrumEngine {
         // Choke group A: Closed Hat silences Open Hat
         if (this.openHatGainParam) {
           this.openHatGainParam.cancelScheduledValues(t);
-          this.openHatGainParam.exponentialRampToValueAtTime(0.001, t + 0.01);
+          this.openHatGainParam.setValueAtTime(this.openHatGainParam.value, t);
+          this.openHatGainParam.exponentialRampToValueAtTime(0.0001, t + 0.01);
         }
         triggerHiHat(this.context, this.destination, t, velocity, params, false);
         break;

@@ -94,7 +94,7 @@ export default function App() {
   };
 
   const handleAddPattern = () => {
-    const id = `p${project.patterns.length + 1}`;
+    const id = `p${Date.now()}`;
     const newPattern = INITIAL_PATTERN(id, `Pattern ${project.patterns.length + 1}`);
     setProject(prev => ({
       ...prev,
@@ -131,7 +131,7 @@ export default function App() {
     setProject(prev => ({
       ...prev,
       bassParams: {
-        ...(prev.bassParams || { waveform: 'sawtooth', cutoff: 0.5, resonance: 0.2, envMod: 0.5, decay: 0.5 }),
+        ...(prev.bassParams || { waveform: 'sawtooth', octave: 2, cutoff: 0.5, resonance: 0.2, envMod: 0.5, decay: 0.5 }),
         [param]: value
       }
     }));

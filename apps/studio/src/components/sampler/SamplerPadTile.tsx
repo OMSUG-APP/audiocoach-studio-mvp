@@ -48,7 +48,7 @@ export function SamplerPadTile({
 
   return (
     <div
-      className="relative aspect-square"
+      className="relative aspect-square group"
       onDragOver={e => { e.preventDefault(); setIsDragOver(true); }}
       onDragLeave={() => setIsDragOver(false)}
       onDrop={e => {

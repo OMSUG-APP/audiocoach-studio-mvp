@@ -286,9 +286,9 @@ export function PatternEditor({
               ))}
             </div>
             <div className="flex items-center gap-1 ml-2 pl-3 border-l border-[#242428]">
-              <button onClick={() => onUpdateBassParam('octave', Math.max(0, (bp.octave || 2) - 1))} className="w-6 h-6 flex items-center justify-center bg-[#1a1a1e] border border-[#242428] hover:border-[#FF5F00] rounded text-xs font-bold text-[#8A8A94] transition-colors">−</button>
-              <span className="text-[9px] font-bold text-[#FF5F00] min-w-4 text-center">{bp.octave || 2}</span>
-              <button onClick={() => onUpdateBassParam('octave', Math.min(8, (bp.octave || 2) + 1))} className="w-6 h-6 flex items-center justify-center bg-[#1a1a1e] border border-[#242428] hover:border-[#FF5F00] rounded text-xs font-bold text-[#8A8A94] transition-colors">+</button>
+              <button onClick={() => onUpdateBassParam('octave', Math.max(0, (bp.octave ?? 2) - 1))} className="w-6 h-6 flex items-center justify-center bg-[#1a1a1e] border border-[#242428] hover:border-[#FF5F00] rounded text-xs font-bold text-[#8A8A94] transition-colors">−</button>
+              <span className="text-[9px] font-bold text-[#FF5F00] min-w-4 text-center">{bp.octave ?? 2}</span>
+              <button onClick={() => onUpdateBassParam('octave', Math.min(8, (bp.octave ?? 2) + 1))} className="w-6 h-6 flex items-center justify-center bg-[#1a1a1e] border border-[#242428] hover:border-[#FF5F00] rounded text-xs font-bold text-[#8A8A94] transition-colors">+</button>
             </div>
           </div>
         </div>
@@ -300,7 +300,7 @@ export function PatternEditor({
                 <div className="w-7 flex-shrink-0 text-[9px] font-bold text-[#8A8A94] text-right pr-1">{note}</div>
                 <div className="flex-1 grid grid-cols-16 gap-1">
                   {pattern.bass.map((step: any, i: number) => {
-                    const fullNote    = `${note}${bp.octave || 2}`;
+                    const fullNote    = `${note}${bp.octave ?? 2}`;
                     const isActive    = step.active && step.note === fullNote;
                     const isCurrent   = currentStep === i;
                     const isLightBeat = Math.floor(i / 4) % 2 === 0;
@@ -354,9 +354,9 @@ export function PatternEditor({
               ))}
             </div>
             <div className="flex items-center gap-1 ml-2 pl-3 border-l border-[#242428]">
-              <button onClick={() => onUpdateSynthParam('octave', Math.max(0, (sp.octave || 4) - 1))} className="w-6 h-6 flex items-center justify-center bg-[#1a1a1e] border border-[#242428] hover:border-[#8b5cf6] rounded text-xs font-bold text-[#8A8A94] transition-colors">−</button>
-              <span className="text-[9px] font-bold text-[#8b5cf6] min-w-4 text-center">{sp.octave || 4}</span>
-              <button onClick={() => onUpdateSynthParam('octave', Math.min(8, (sp.octave || 4) + 1))} className="w-6 h-6 flex items-center justify-center bg-[#1a1a1e] border border-[#242428] hover:border-[#8b5cf6] rounded text-xs font-bold text-[#8A8A94] transition-colors">+</button>
+              <button onClick={() => onUpdateSynthParam('octave', Math.max(0, (sp.octave ?? 4) - 1))} className="w-6 h-6 flex items-center justify-center bg-[#1a1a1e] border border-[#242428] hover:border-[#8b5cf6] rounded text-xs font-bold text-[#8A8A94] transition-colors">−</button>
+              <span className="text-[9px] font-bold text-[#8b5cf6] min-w-4 text-center">{sp.octave ?? 4}</span>
+              <button onClick={() => onUpdateSynthParam('octave', Math.min(8, (sp.octave ?? 4) + 1))} className="w-6 h-6 flex items-center justify-center bg-[#1a1a1e] border border-[#242428] hover:border-[#8b5cf6] rounded text-xs font-bold text-[#8A8A94] transition-colors">+</button>
             </div>
           </div>
         </div>
@@ -368,7 +368,7 @@ export function PatternEditor({
                 <div className="w-7 flex-shrink-0 text-[9px] font-bold text-[#8A8A94] text-right pr-1">{note}</div>
                 <div className="flex-1 grid grid-cols-16 gap-1">
                   {(pattern.synth || Array(16).fill({ active: false, note: '' })).map((step: any, i: number) => {
-                    const fullNote    = `${note}${sp.octave || 4}`;
+                    const fullNote    = `${note}${sp.octave ?? 4}`;
                     const isActive    = step.active && step.note === fullNote;
                     const isCurrent   = currentStep === i;
                     const isLightBeat = Math.floor(i / 4) % 2 === 0;

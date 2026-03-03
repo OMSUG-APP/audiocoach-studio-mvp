@@ -1,2 +1,2 @@
-export * from './types.ts';
-export * from './schema.ts';
+export * from './types.js';
+export * from './schema.js';

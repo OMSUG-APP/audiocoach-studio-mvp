@@ -76,9 +76,15 @@ export class BassSynth {
 
   private initOscillators() {
     const now = this.ctx.currentTime;
-    
-    if (this.mainOsc) this.mainOsc.stop();
-    if (this.subOsc) this.subOsc.stop();
+
+    if (this.mainOsc) {
+      this.mainOsc.disconnect();
+      try { this.mainOsc.stop(); } catch (_) {}
+    }
+    if (this.subOsc) {
+      this.subOsc.disconnect();
+      try { this.subOsc.stop(); } catch (_) {}
+    }
 
     this.mainOsc = this.ctx.createOscillator();
     this.mainOsc.type = this.oscType;

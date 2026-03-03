@@ -45,39 +45,51 @@ export const renderToWav = async (
     compressor.release.value = masterComp.release ?? 0.25;
   }
 
-  const driveAmount = project.mixer?.master?.drive ?? 0;
+  masterGain.connect(compressor);
+  compressor.connect(ctx.destination);
+
+  // --- 2. RECREATE THE FX BUSES ---
+  const fx = (project.mixer as any)?.effects || {};
+  const fxReverb = fx.reverb || { return: 0.8 };
+  const fxDelay  = fx.delay  || { time: 0.3, feedback: 0.3, return: 0.8 };
+  const fxDrive  = fx.drive  || { amount: 0, return: 0.8 };
+
+  // Drive bus
   const driveNode = ctx.createWaveShaper();
+  const driveAmount = fxDrive.amount ?? 0;
   if (driveAmount > 0) {
     const curve = new Float32Array(44100);
-    const k = driveAmount * 100;
+    const k = driveAmount * 400;
     for (let i = 0; i < 44100; i++) {
       const x = (i * 2) / 44100 - 1;
       curve[i] = ((3 + k) * x * 20 * (Math.PI / 180)) / (Math.PI + k * Math.abs(x));
     }
     driveNode.curve = curve;
   }
-  driveNode.connect(masterGain);
-  masterGain.connect(compressor);
-  compressor.connect(ctx.destination);
+  const driveReturn = ctx.createGain(); driveReturn.gain.value = fxDrive.return ?? 0.8;
+  driveNode.connect(driveReturn); driveReturn.connect(masterGain);
 
-  // --- 2. RECREATE THE FX BUSES ---
+  // Reverb bus
   const reverbNode = ctx.createConvolver();
   reverbNode.buffer = createImpulseResponse(ctx, 2.0, 2.0);
-  reverbNode.connect(driveNode);
+  const reverbReturn = ctx.createGain(); reverbReturn.gain.value = fxReverb.return ?? 0.8;
+  reverbNode.connect(reverbReturn); reverbReturn.connect(masterGain);
 
-  const delayNode = ctx.createDelay();
-  delayNode.delayTime.value = project.mixer?.drums?.delay?.time ?? 0.3;
+  // Delay bus
+  const delayNode = ctx.createDelay(2.0);
+  delayNode.delayTime.value = fxDelay.time ?? 0.3;
   const delayFeedback = ctx.createGain();
-  delayFeedback.gain.value = project.mixer?.drums?.delay?.feedback ?? 0.3;
+  delayFeedback.gain.value = fxDelay.feedback ?? 0.3;
   delayNode.connect(delayFeedback);
   delayFeedback.connect(delayNode);
-  delayNode.connect(driveNode);
+  const delayReturn = ctx.createGain(); delayReturn.gain.value = fxDelay.return ?? 0.8;
+  delayNode.connect(delayReturn); delayReturn.connect(masterGain);
 
   // --- 3. RECREATE CHANNEL STRIPS ---
   const setupChannel = (name: 'drums' | 'bass' | 'synth') => {
-    const chMixer = project.mixer?.[name] || { volume: 0.8, eq: { low: 0, mid: 0, high: 0 }, reverb: 0, delay: { mix: 0 } };
+    const chMixer = project.mixer?.[name] || { volume: 0.8, eq: { low: 0, mid: 0, high: 0 }, reverb: 0, delay: { mix: 0 }, driveSend: 0 };
     const gain = ctx.createGain();
-    
+
     // STEM EXPORT LOGIC: Mute the channel if we are exporting a different stem
     if (mode !== 'master' && mode !== name) {
       gain.gain.value = 0;
@@ -90,7 +102,7 @@ export const renderToWav = async (
     const highEQ = ctx.createBiquadFilter(); highEQ.type = 'highshelf'; highEQ.frequency.value = 10000; highEQ.gain.value = chMixer.eq?.high ?? 0;
 
     lowEQ.connect(midEQ); midEQ.connect(highEQ); highEQ.connect(gain);
-    gain.connect(driveNode);
+    gain.connect(masterGain); // dry path
 
     const revSend = ctx.createGain(); revSend.gain.value = chMixer.reverb ?? 0;
     gain.connect(revSend); revSend.connect(reverbNode);
@@ -98,7 +110,10 @@ export const renderToWav = async (
     const delSend = ctx.createGain(); delSend.gain.value = chMixer.delay?.mix ?? 0;
     gain.connect(delSend); delSend.connect(delayNode);
 
-    return lowEQ; 
+    const drvSend = ctx.createGain(); drvSend.gain.value = (chMixer as any).driveSend ?? 0;
+    gain.connect(drvSend); drvSend.connect(driveNode);
+
+    return lowEQ;
   };
 
   const drumInput = setupChannel('drums');
@@ -137,7 +152,7 @@ export const renderToWav = async (
       if (pattern.bass[step]?.active) {
         const engine = createBassEngine(ctx, bassInput);
         const bp = project.bassParams || { waveform: 'sawtooth', octave: 2, cutoff: 0.5, resonance: 0.2, envMod: 0.5, decay: 0.5 };
-        const bassOctaveShift = (bp.octave || 2) - 2;
+        const bassOctaveShift = (bp.octave ?? 2) - 2;
         const freq = noteToFreq(pattern.bass[step].note!, bassOctaveShift);
         engine.playNote(time, freq, stepTime, 0.8, bp);
       }
@@ -146,7 +161,7 @@ export const renderToWav = async (
       if (pattern.synth?.[step]?.active) {
         const engine = createSynthEngine(ctx, synthInput);
         const sp = project.synthParams || { octave: 4, attack: 0.5, release: 0.5, cutoff: 0.5, detune: 0.5 };
-        const synthOctaveShift = (sp.octave || 4) - 4;
+        const synthOctaveShift = (sp.octave ?? 4) - 4;
         const freq = noteToFreq(pattern.synth[step].note!, synthOctaveShift);
         engine.playNote(time, freq, stepTime * 4, 0.6, sp);
       }
@@ -180,7 +195,7 @@ function audioBufferToWav(buffer: AudioBuffer): Blob {
   while (pos < length) {
     for (let i = 0; i < numOfChan; i++) {
       sample = Math.max(-1, Math.min(1, channels[i][offset]));
-      sample = (0.5 + sample < 0 ? sample * 32768 : sample * 32767) | 0;
+      sample = (sample < 0 ? sample * 32768 : sample * 32767) | 0;
       view.setInt16(pos, sample, true); pos += 2;
     }
     offset++;

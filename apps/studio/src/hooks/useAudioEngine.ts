@@ -85,7 +85,7 @@ export const useAudioEngine = (
     const secondsPerStep = 60 / bpm / 4;
     
     let adjustedTime = time;
-    if (step % 2 === 1) adjustedTime += secondsPerStep * (swing / 100);
+    if (step % 2 === 1) adjustedTime += secondsPerStep * (swing / 100) * 0.33;
 
     const bassEngine = createBassEngine(audioCtxRef.current, bassGainRef.current);
     const synthEngine = createSynthEngine(audioCtxRef.current, synthGainRef.current);
@@ -132,7 +132,7 @@ export const useAudioEngine = (
     const bassStep = pattern.bass?.[step];
     if (bassStep?.active && bassStep?.note) {
       const bp = currentProject.bassParams || { waveform: 'sawtooth', octave: 2, cutoff: 0.5, resonance: 0.2, envMod: 0.5, decay: 0.5 };
-      const bassOctaveShift = (bp.octave || 2) - 2;
+      const bassOctaveShift = (bp.octave ?? 2) - 2;
       const freq = noteToFreq(bassStep.note, bassOctaveShift);
       bassEngine.playNote(adjustedTime, freq, secondsPerStep * (bassStep.length || 1), bassStep.velocity || 0.8, bp);
     }
@@ -141,7 +141,7 @@ export const useAudioEngine = (
     const synthStep = pattern.synth?.[step];
     if (synthStep?.active && synthStep?.note) {
       const sp = currentProject.synthParams || { octave: 4, attack: 0.5, release: 0.5, cutoff: 0.5, detune: 0.5 };
-      const synthOctaveShift = (sp.octave || 4) - 4;
+      const synthOctaveShift = (sp.octave ?? 4) - 4;
       const freq = noteToFreq(synthStep.note, synthOctaveShift);
       synthEngine.playNote(adjustedTime, freq, secondsPerStep * (synthStep.length || 4), synthStep.velocity || 0.6, sp);
     }

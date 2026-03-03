@@ -37,15 +37,15 @@ export const INITIAL_PATTERN = (id: string, name: string): Pattern => ({
   id,
   name,
   drums: {
-    BD: Array(16).fill({ active: false, velocity: 0.8 }),
-    SD: Array(16).fill({ active: false, velocity: 0.8 }),
-    HC: Array(16).fill({ active: false, velocity: 0.8 }),
-    OH: Array(16).fill({ active: false, velocity: 0.8 }),
-    LT: Array(16).fill({ active: false, velocity: 0.8 }),
-    HT: Array(16).fill({ active: false, velocity: 0.8 }),
+    BD: Array.from({ length: 16 }, () => ({ active: false, velocity: 0.8 })),
+    SD: Array.from({ length: 16 }, () => ({ active: false, velocity: 0.8 })),
+    HC: Array.from({ length: 16 }, () => ({ active: false, velocity: 0.8 })),
+    OH: Array.from({ length: 16 }, () => ({ active: false, velocity: 0.8 })),
+    LT: Array.from({ length: 16 }, () => ({ active: false, velocity: 0.8 })),
+    HT: Array.from({ length: 16 }, () => ({ active: false, velocity: 0.8 })),
   },
-  bass: Array(16).fill({ active: false, note: '', velocity: 0.8, length: 1 }),
-  synth: Array(16).fill({ active: false, note: '', velocity: 0.6, length: 4 }),
+  bass: Array.from({ length: 16 }, () => ({ active: false, note: '', velocity: 0.8, length: 1 })),
+  synth: Array.from({ length: 16 }, () => ({ active: false, note: '', velocity: 0.6, length: 4 })),
   samplerSteps: Array.from({ length: 16 }, () => Array(16).fill(false)),
 });
 
