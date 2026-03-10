@@ -10,6 +10,12 @@ export interface Pattern {
   bass: NoteStep[];
   synth: NoteStep[];
   samplerSteps?: boolean[][]; // [padId 0-15][step 0-15]
+  polySynth?: ChordStep[];    // 16 chord steps
+  drum2?: Drum2Track[];       // 8 tracks × 16 steps
+  lead?: NoteStep[];
+  fm?: NoteStep[];
+  pluck?: NoteStep[];
+  stab?: NoteStep[];
 }
 
 export interface ArrangementRegion { id: string; patternId: string; startStep: number; length: number; }
@@ -65,6 +71,80 @@ export interface SamplerPad {
 
 export type PadLoadStatus = 'idle' | 'loading' | 'loaded' | 'error';
 
+// ─── Lead Synth ──────────────────────────────────────────────────────────────
+
+export interface LeadSynthParams {
+  waveform: 'sawtooth' | 'square';
+  octave: number;
+  cutoff: number;
+  resonance: number;
+  attack: number;
+  decay: number;
+  portamento: number;
+}
+
+// ─── FM Synthesizer ───────────────────────────────────────────────────────────
+
+export interface FMSynthParams {
+  ratio: number;
+  modIndex: number;
+  attack: number;
+  decay: number;
+  octave: number;
+  feedback: number;
+}
+
+// ─── Pluck Synth ──────────────────────────────────────────────────────────────
+
+export interface PluckSynthParams {
+  damping: number;
+  brightness: number;
+  body: number;
+  octave: number;
+}
+
+// ─── Chord Stab ───────────────────────────────────────────────────────────────
+
+export interface ChordStabParams {
+  waveform: 'sawtooth' | 'square';
+  octave: number;
+  cutoff: number;
+  attack: number;
+  decay: number;
+  spread: number;
+}
+
+// ─── Poly Synth ──────────────────────────────────────────────────────────────
+
+export interface ChordStep { active: boolean; chord: string[]; velocity: number; length: number; }
+
+export interface PolySynthParams {
+  oscMix: number;
+  subLevel: number;
+  cutoff: number;
+  resonance: number;
+  envMod: number;
+  attack: number;
+  decay: number;
+  sustain: number;
+  release: number;
+  chorus: number;
+  octave: number;
+}
+
+// ─── Drum2 (Digitakt-style) ───────────────────────────────────────────────────
+
+export interface Drum2Track { name: string; steps: Step[]; mute?: boolean; solo?: boolean; tune?: number; decay?: number; }
+
+// ─── Arrangement ─────────────────────────────────────────────────────────────
+
+export interface ArrangementBlock {
+  id: string;
+  patternId: string;
+  startBar: number;
+  lengthBars: number;
+}
+
 // ─── Project ─────────────────────────────────────────────────────────────────
 
 export interface Project {
@@ -73,6 +153,7 @@ export interface Project {
   swing: number;
   patterns: Pattern[];
   arrangement: ArrangementRegion[];
+  arrangementBlocks?: ArrangementBlock[];
 
   drumKit?: '808' | '909';
   bassPreset?: string;
@@ -80,12 +161,40 @@ export interface Project {
   drumParams?: Record<string, DrumVoiceParams>;
   bassParams?: { waveform: 'sawtooth' | 'square'; octave: number; cutoff: number; resonance: number; envMod: number; decay: number; };
   synthParams?: { octave: number; attack: number; release: number; cutoff: number; detune: number; };
+  polySynthParams?: PolySynthParams;
+  leadParams?: LeadSynthParams;
+  leadPreset?: string;
+  fmParams?: FMSynthParams;
+  fmPreset?: string;
+  pluckParams?: PluckSynthParams;
+  pluckPreset?: string;
+  stabParams?: ChordStabParams;
+  stabPreset?: string;
+
+  poweredOn?: {
+    drums: boolean;
+    bass: boolean;
+    synth: boolean;
+    polySynth: boolean;
+    drum2: boolean;
+    sampler: boolean;
+    lead: boolean;
+    fm: boolean;
+    pluck: boolean;
+    stab: boolean;
+  };
 
   mixer: {
     drums: ChannelMixer;
     bass: ChannelMixer;
     synth: ChannelMixer;
     sampler: ChannelMixer;
+    polySynth?: ChannelMixer;
+    drum2?: ChannelMixer;
+    lead?: ChannelMixer;
+    fm?: ChannelMixer;
+    pluck?: ChannelMixer;
+    stab?: ChannelMixer;
     effects: {
       reverb: { return: number };
       delay:  { time: number; feedback: number; return: number };

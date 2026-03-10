@@ -1,200 +1,53 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import { TransportBar } from './components/TransportBar';
 import { PatternEditor } from './components/PatternEditor';
-import { MixerView } from './components/MixerView';
+import { MixerPage } from './components/MixerPage';
+import { InstrumentsPage } from './components/InstrumentsPage';
+import { ArrangementPage } from './components/ArrangementPage';
 import { SamplerView } from './components/sampler';
 import { useAudioEngine } from './hooks/useAudioEngine';
 import { useSampler } from './hooks/useSampler';
-import { INITIAL_PROJECT, INITIAL_PATTERN, BASS_PRESETS, SYNTH_PRESETS } from './constants';
-import { Project, DrumInstrument, Step, NoteStep } from './types';
 import { Download } from 'lucide-react';
-import { renderToWav } from './utils/export';
+import { renderToWav, ExportMode } from './utils/export';
+import { useProjectStore, useActivePattern } from './store/useProjectStore';
 
-type MainTab = 'sequencer' | 'sampler';
+type MainTab = 'sequencer' | 'sampler' | 'instruments' | 'mixer' | 'arrangement';
 
 export default function App() {
-  const [project, setProject] = useState<Project>(() => {
-    const saved = localStorage.getItem('sequencer-project');
-    return saved ? JSON.parse(saved) : INITIAL_PROJECT;
-  });
-  const [activePatternId, setActivePatternId] = useState(project.patterns[0].id);
+  const project = useProjectStore((s) => s.project);
+  const activePatternId = useProjectStore((s) => s.activePatternId);
+  const store = useProjectStore();
+
   const [isExporting, setIsExporting] = useState(false);
   const [activeTab, setActiveTab] = useState<MainTab>('sequencer');
 
+  const activePattern = useActivePattern();
   const sampler = useSampler(project.mixer.sampler);
-  const { isPlaying, currentStep, togglePlay } = useAudioEngine(project, sampler.schedulePadAtTime);
-
-  // Persistence
-  useEffect(() => {
-    const timeout = setTimeout(() => {
-      localStorage.setItem('sequencer-project', JSON.stringify(project));
-    }, 1000);
-    return () => clearTimeout(timeout);
-  }, [project]);
+  const { isPlaying, currentStep, currentDrum2Step, currentPluckStep, currentPolySynthStep, togglePlay, analysers } = useAudioEngine(project, activePatternId, sampler.schedulePadAtTime);
 
   // Spacebar Play/Pause
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) {
-        return;
-      }
-      if (e.code === 'Space') {
-        e.preventDefault();
-        togglePlay();
-      }
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
+      if (e.code === 'Space') { e.preventDefault(); togglePlay(); }
     };
-
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [togglePlay]);
 
-  const activePattern = project.patterns.find(p => p.id === activePatternId)!;
-
-  const updateActivePattern = useCallback((updater: (p: typeof activePattern) => typeof activePattern) => {
-    setProject(prev => ({
-      ...prev,
-      patterns: prev.patterns.map(p => p.id === activePatternId ? updater(p) : p)
-    }));
-  }, [activePatternId]);
-
-  const handleToggleDrumStep = (inst: DrumInstrument, step: number) => {
-    updateActivePattern(p => ({
-      ...p,
-      drums: {
-        ...p.drums,
-        [inst]: p.drums[inst].map((s, i) => i === step ? { ...s, active: !s.active } : s)
-      }
-    }));
-  };
-  
-  const handleToggleBassStep = (step: number, note: string) => {
-    updateActivePattern(p => ({
-      ...p,
-      bass: p.bass.map((s, i) => {
-        if (i === step) {
-          const isSameNote = s.note === note;
-          return { ...s, active: isSameNote ? !s.active : true, note };
-        }
-        return s;
-      })
-    }));
-  };
-
-  const handleToggleSynthStep = (step: number, note: string) => {
-    updateActivePattern(p => ({
-      ...p,
-      synth: (p.synth || Array(16).fill({ active: false, note: '', velocity: 0.6, length: 4 })).map((s, i) => {
-        if (i === step) {
-          const isSameNote = s.note === note;
-          return { ...s, active: isSameNote ? !s.active : true, note };
-        }
-        return s;
-      })
-    }));
-  };
-
-  const handleAddPattern = () => {
-    const id = `p${Date.now()}`;
-    const newPattern = INITIAL_PATTERN(id, `Pattern ${project.patterns.length + 1}`);
-    setProject(prev => ({
-      ...prev,
-      patterns: [...prev.patterns, newPattern]
-    }));
-    setActivePatternId(id);
-  };
-
-  const handleUpdateDrumParam = (inst: string, param: string, value: any) => {
-    setProject(prev => ({
-      ...prev,
-      drumParams: {
-        ...prev.drumParams,
-        [inst]: {
-          ...(prev.drumParams?.[inst] || { tune: 0.5, decay: 0.5, mute: false, solo: false }),
-          [param]: value
-        }
-      }
-    }));
-  };
-
-  const handleDrumKitChange = (kit: '808' | '909') => {
-    setProject(prev => ({
-      ...prev,
-      drumKit: kit
-    }));
-  };
-
-  const handleApplyBassPreset = (preset: typeof BASS_PRESETS[string], name: string) => {
-    setProject(prev => ({ ...prev, bassPreset: name, bassParams: { ...preset } }));
-  };
-
-  const handleUpdateBassParam = (param: string, value: any) => {
-    setProject(prev => ({
-      ...prev,
-      bassParams: {
-        ...(prev.bassParams || { waveform: 'sawtooth', octave: 2, cutoff: 0.5, resonance: 0.2, envMod: 0.5, decay: 0.5 }),
-        [param]: value
-      }
-    }));
-  };
-
-  const handleToggleSamplerStep = (padId: number, step: number) => {
-    updateActivePattern(p => {
-      const current = p.samplerSteps || Array.from({ length: 16 }, () => Array(16).fill(false));
-      const next = current.map((row, i) =>
-        i === padId ? row.map((v: boolean, j: number) => j === step ? !v : v) : row
-      );
-      return { ...p, samplerSteps: next };
-    });
-  };
-
-  // ── Generator "set entire section" handlers ──────────────────────────────
-  const handleSetDrumSteps = (steps: Record<DrumInstrument, Step[]>) => {
-    updateActivePattern(p => ({ ...p, drums: steps }));
-  };
-
-  const handleSetBassSteps = (steps: NoteStep[]) => {
-    updateActivePattern(p => ({ ...p, bass: steps }));
-  };
-
-  const handleSetSynthSteps = (steps: NoteStep[]) => {
-    updateActivePattern(p => ({ ...p, synth: steps }));
-  };
-
-  const handleSetSamplerSteps = (steps: boolean[][]) => {
-    updateActivePattern(p => ({ ...p, samplerSteps: steps }));
-  };
-
-  const handleApplySynthPreset = (preset: typeof SYNTH_PRESETS[string], name: string) => {
-    setProject(prev => ({ ...prev, synthPreset: name, synthParams: { ...preset } }));
-  };
-
-  const handleUpdateSynthParam = (param: string, value: any) => {
-    setProject(prev => ({
-      ...prev,
-      synthParams: {
-        ...(prev.synthParams || { attack: 0.5, release: 0.5, cutoff: 0.5, detune: 0.5 }),
-        [param]: value
-      }
-    }));
-  };
-
   const downloadBlob = (blob: Blob, filename: string) => {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
-    a.href = url;
-    a.download = filename;
-    a.click();
+    a.href = url; a.download = filename; a.click();
     URL.revokeObjectURL(url);
   };
 
   const handleExportMaster = async () => {
     setIsExporting(true);
     try {
-      const wavBlob = await renderToWav(project, activePattern, 'master');
+      const wavBlob = await renderToWav(project, activePattern, 'master', sampler.samplerBuffers, sampler.pads);
       downloadBlob(wavBlob, `${project.name.toLowerCase().replace(/\s+/g, '-')}-master.wav`);
-    } catch (error) {
-      console.error('Export failed:', error);
-    }
+    } catch (error) { console.error('Export failed:', error); }
     setIsExporting(false);
   };
 
@@ -202,27 +55,19 @@ export default function App() {
     setIsExporting(true);
     try {
       const projectName = project.name.toLowerCase().replace(/\s+/g, '-');
-      
-      // Render and download Drums
-      const drumsBlob = await renderToWav(project, activePattern, 'drums');
-      downloadBlob(drumsBlob, `${projectName}-stem-drums.wav`);
-      
-      // Small delay to prevent the browser from blocking multiple rapid downloads
-      await new Promise(r => setTimeout(r, 500)); 
-      
-      // Render and download Bass
-      const bassBlob = await renderToWav(project, activePattern, 'bass');
-      downloadBlob(bassBlob, `${projectName}-stem-bass.wav`);
-      
-      await new Promise(r => setTimeout(r, 500));
-      
-      // Render and download Synth
-      const synthBlob = await renderToWav(project, activePattern, 'synth');
-      downloadBlob(synthBlob, `${projectName}-stem-synth.wav`);
-      
-    } catch (error) {
-      console.error('Stem export failed:', error);
-    }
+      const stems: { mode: ExportMode; label: string }[] = [
+        { mode: 'drums',     label: 'drums'     },
+        { mode: 'bass',      label: 'bass'      },
+        { mode: 'synth',     label: 'synth'     },
+        { mode: 'polySynth', label: 'poly'      },
+        { mode: 'drum2',     label: 'drum2'     },
+      ];
+      for (const { mode, label } of stems) {
+        const blob = await renderToWav(project, activePattern, mode, sampler.samplerBuffers, sampler.pads);
+        downloadBlob(blob, `${projectName}-stem-${label}.wav`);
+        await new Promise(r => setTimeout(r, 300));
+      }
+    } catch (error) { console.error('Stem export failed:', error); }
     setIsExporting(false);
   };
 
@@ -243,7 +88,7 @@ export default function App() {
             </span>
             <input
               value={project.name}
-              onChange={(e) => setProject({ ...project, name: e.target.value })}
+              onChange={(e) => store.setProjectName(e.target.value)}
               className="bg-transparent font-bold text-sm text-[#F0F0F2] focus:outline-none hover:bg-[#242428] px-1 py-0.5 rounded transition-colors uppercase tracking-wider leading-tight"
             />
           </div>
@@ -273,14 +118,19 @@ export default function App() {
         isPlaying={isPlaying}
         onTogglePlay={togglePlay}
         bpm={project.bpm}
-        onBpmChange={(bpm) => setProject({ ...project, bpm })}
+        onBpmChange={store.setBpm}
         swing={project.swing}
-        onSwingChange={(swing) => setProject({ ...project, swing })}
+        onSwingChange={store.setSwing}
+        patterns={project.patterns}
+        activePatternId={activePatternId}
+        onSelectPattern={store.setActivePatternId}
+        onSwitchOrCreatePattern={store.switchOrCreatePattern}
+        onRenamePattern={store.renamePattern}
       />
 
-      {/* ── Tab bar ──────────────────────────────────────────────────────── */}
+      {/* Tab bar */}
       <div className="flex items-center gap-1 px-4 pt-3 pb-0 border-b border-[#242428]">
-        {(['sequencer', 'sampler'] as MainTab[]).map(tab => (
+        {(['sequencer', 'mixer', 'sampler', 'instruments', 'arrangement'] as MainTab[]).map(tab => (
           <button
             key={tab}
             onClick={() => setActiveTab(tab)}
@@ -299,58 +149,111 @@ export default function App() {
         <div className="flex-4 flex flex-col overflow-hidden">
 
           {activeTab === 'sequencer' ? (
-            /* ── Pattern Editor ─────────────────────────────────────────── */
             <div className="flex-1 bg-[#111113] border border-[#242428] rounded-lg p-4 shadow-lg overflow-y-auto">
               <PatternEditor
                 pattern={activePattern}
                 currentStep={currentStep}
-                onToggleDrumStep={handleToggleDrumStep}
-                onToggleBassStep={handleToggleBassStep}
-                onToggleSynthStep={handleToggleSynthStep}
+                onToggleDrumStep={store.toggleDrumStep}
+                onToggleBassStep={store.toggleBassStep}
+                onToggleSynthStep={store.toggleSynthStep}
                 drumKit={project.drumKit}
-                onDrumKitChange={handleDrumKitChange}
+                onDrumKitChange={store.drumKitChange}
                 drumParams={project.drumParams}
-                onUpdateDrumParam={handleUpdateDrumParam}
+                onUpdateDrumParam={store.updateDrumParam}
                 bassParams={project.bassParams}
                 bassPreset={project.bassPreset}
-                onUpdateBassParam={handleUpdateBassParam}
-                onApplyBassPreset={handleApplyBassPreset}
+                onUpdateBassParam={store.updateBassParam}
+                onApplyBassPreset={store.applyBassPreset}
                 synthParams={project.synthParams}
                 synthPreset={project.synthPreset}
-                onUpdateSynthParam={handleUpdateSynthParam}
-                onApplySynthPreset={handleApplySynthPreset}
+                onUpdateSynthParam={store.updateSynthParam}
+                onApplySynthPreset={store.applySynthPreset}
                 samplerPads={sampler.pads}
                 padLoadStatus={sampler.padLoadStatus}
                 samplerSteps={activePattern.samplerSteps}
-                onToggleSamplerStep={handleToggleSamplerStep}
-                onSetDrumSteps={handleSetDrumSteps}
-                onSetBassSteps={handleSetBassSteps}
-                onSetSynthSteps={handleSetSynthSteps}
-                onSetSamplerSteps={handleSetSamplerSteps}
+                onToggleSamplerStep={store.toggleSamplerStep}
+                onSetDrumSteps={store.setDrumSteps}
+                onSetBassSteps={store.setBassSteps}
+                onSetSynthSteps={store.setSynthSteps}
+                onSetSamplerSteps={store.setSamplerSteps}
+                polySynthParams={project.polySynthParams}
+                polySynthPoweredOn={project.poweredOn?.polySynth ?? true}
+                drumsPoweredOn={project.poweredOn?.drums ?? true}
+                onToggleDrumsPower={() => store.togglePower('drums')}
+                bassPoweredOn={project.poweredOn?.bass ?? true}
+                onToggleBassPower={() => store.togglePower('bass')}
+                synthPoweredOn={project.poweredOn?.synth ?? true}
+                onToggleSynthPower={() => store.togglePower('synth')}
+                onTogglePolySynthPower={() => store.togglePower('polySynth')}
+                onTogglePolySynthStep={store.togglePolySynthStep}
+                onSetPolySynthChord={store.setPolySynthChord}
+                onUpdatePolySynthParam={store.updatePolySynthParam}
+                currentPolySynthStep={currentPolySynthStep}
+                drum2PoweredOn={project.poweredOn?.drum2 ?? true}
+                onToggleDrum2Power={() => store.togglePower('drum2')}
+                onToggleDrum2Step={store.toggleDrum2Step}
+                currentDrum2Step={currentDrum2Step}
+                onUpdateDrum2TrackParam={store.updateDrum2TrackParam}
+                onSetDrum2Steps={store.setDrum2Steps}
+                samplerPoweredOn={project.poweredOn?.sampler ?? true}
+                onToggleSamplerPower={() => store.togglePower('sampler')}
+                leadParams={project.leadParams}
+                leadPreset={project.leadPreset}
+                onUpdateLeadParam={store.updateLeadParam}
+                onApplyLeadPreset={store.applyLeadPreset}
+                onToggleLeadStep={store.toggleLeadStep}
+                onSetLeadSteps={store.setLeadSteps}
+                leadPoweredOn={project.poweredOn?.lead ?? true}
+                onToggleLeadPower={() => store.togglePower('lead')}
+                fmParams={project.fmParams}
+                fmPreset={project.fmPreset}
+                onUpdateFMParam={store.updateFMParam}
+                onApplyFMPreset={store.applyFMPreset}
+                onToggleFMStep={store.toggleFMStep}
+                onSetFMSteps={store.setFMSteps}
+                fmPoweredOn={project.poweredOn?.fm ?? true}
+                onToggleFMPower={() => store.togglePower('fm')}
+                pluckParams={project.pluckParams}
+                pluckPreset={project.pluckPreset}
+                onUpdatePluckParam={store.updatePluckParam}
+                onApplyPluckPreset={store.applyPluckPreset}
+                onTogglePluckStep={store.togglePluckStep}
+                onSetPluckSteps={store.setPluckSteps}
+                currentPluckStep={currentPluckStep}
+                pluckPoweredOn={project.poweredOn?.pluck ?? true}
+                onTogglePluckPower={() => store.togglePower('pluck')}
+                stabParams={project.stabParams}
+                stabPreset={project.stabPreset}
+                onUpdateStabParam={store.updateStabParam}
+                onApplyStabPreset={store.applyStabPreset}
+                onToggleStabStep={store.toggleStabStep}
+                onSetStabSteps={store.setStabSteps}
+                stabPoweredOn={project.poweredOn?.stab ?? true}
+                onToggleStabPower={() => store.togglePower('stab')}
               />
             </div>
-          ) : (
-            /* ── Sampler ────────────────────────────────────────────────── */
+          ) : activeTab === 'sampler' ? (
             <div className="flex-1 overflow-hidden">
               <SamplerView
                 {...sampler}
                 mixerChannel={project.mixer.sampler}
-                onMixerChannelChange={(ch) => setProject(prev => ({
-                  ...prev,
-                  mixer: { ...prev.mixer, sampler: ch }
-                }))}
+                onMixerChannelChange={(ch) => store.updateMixerChannel('sampler', ch)}
               />
+            </div>
+          ) : activeTab === 'instruments' ? (
+            <div className="flex-1 overflow-hidden">
+              <InstrumentsPage />
+            </div>
+          ) : activeTab === 'mixer' ? (
+            <div className="flex-1 overflow-hidden">
+              <MixerPage analysers={analysers} />
+            </div>
+          ) : (
+            <div className="flex-1 overflow-hidden">
+              <ArrangementPage />
             </div>
           )}
 
-        </div>
-
-        {/* Mixer */}
-        <div className="flex-1 bg-[#111113] border border-[#242428] rounded-lg p-4 shadow-lg overflow-y-auto">
-          <MixerView
-            mixer={project.mixer}
-            onMixerChange={(mixer) => setProject({ ...project, mixer })}
-          />
         </div>
       </div>
     </div>

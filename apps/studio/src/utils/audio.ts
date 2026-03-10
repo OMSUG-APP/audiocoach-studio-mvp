@@ -138,6 +138,143 @@ export const createSynthEngine = (ctx: BaseAudioContext, dest: AudioNode) => {
   return { playNote };
 };
 
+export const createLeadSynthEngine = (ctx: BaseAudioContext, dest: AudioNode) => {
+  const playNote = (time: number, freq: number, duration: number, velocity: number, p = { waveform: 'sawtooth', cutoff: 0.8, resonance: 0.3, attack: 0.01, decay: 0.3, portamento: 0.0 }) => {
+    const osc = ctx.createOscillator();
+    const filter = ctx.createBiquadFilter();
+    const gain = ctx.createGain();
+
+    osc.type = p.waveform as OscillatorType;
+    osc.frequency.setValueAtTime(freq, time);
+
+    filter.type = 'lowpass';
+    filter.frequency.setValueAtTime(100 + p.cutoff * 7900, time);
+    filter.Q.setValueAtTime(p.resonance * 20, time);
+
+    const attackTime = 0.001 + p.attack * 0.2;
+    const decayTime  = 0.05  + p.decay  * 1.0;
+
+    gain.gain.setValueAtTime(0, time);
+    gain.gain.linearRampToValueAtTime(velocity * 0.5, time + attackTime);
+    gain.gain.setValueAtTime(velocity * 0.5, time + duration);
+    gain.gain.linearRampToValueAtTime(0, time + duration + decayTime);
+
+    osc.connect(filter); filter.connect(gain); gain.connect(dest);
+    osc.start(time); osc.stop(time + duration + decayTime + 0.05);
+  };
+  return { playNote };
+};
+
+export const createFMSynthEngine = (ctx: BaseAudioContext, dest: AudioNode) => {
+  const playNote = (time: number, freq: number, duration: number, velocity: number, p = { ratio: 0.5, modIndex: 0.7, attack: 0.01, decay: 0.8, octave: 5, feedback: 0.0 }) => {
+    const ratioMultipliers = [0.5, 1, 2, 3, 4, 7, 8];
+    const modRatioIndex = Math.min(Math.floor(p.ratio * 6), ratioMultipliers.length - 1);
+    const modFreq = freq * ratioMultipliers[modRatioIndex];
+    const modDepth = p.modIndex * freq * 10;
+
+    const modulator = ctx.createOscillator();
+    const modGain   = ctx.createGain();
+    const carrier   = ctx.createOscillator();
+    const carrierGain = ctx.createGain();
+
+    modulator.type = 'sine';
+    modulator.frequency.setValueAtTime(modFreq, time);
+    modGain.gain.setValueAtTime(modDepth, time);
+
+    carrier.type = 'sine';
+    carrier.frequency.setValueAtTime(freq, time);
+
+    const attackTime = 0.001 + p.attack * 0.2;
+    const totalDecay = 0.05 + p.decay * 2.0;
+
+    carrierGain.gain.setValueAtTime(0, time);
+    carrierGain.gain.linearRampToValueAtTime(velocity * 0.4, time + attackTime);
+    carrierGain.gain.setValueAtTime(velocity * 0.4, time + duration);
+    carrierGain.gain.linearRampToValueAtTime(0, time + duration + totalDecay);
+
+    modulator.connect(modGain);
+    modGain.connect(carrier.frequency);
+    carrier.connect(carrierGain);
+    carrierGain.connect(dest);
+
+    modulator.start(time); modulator.stop(time + duration + totalDecay + 0.05);
+    carrier.start(time);   carrier.stop(time + duration + totalDecay + 0.05);
+  };
+  return { playNote };
+};
+
+export const createPluckEngine = (ctx: BaseAudioContext, dest: AudioNode) => {
+  const playNote = (time: number, freq: number, _duration: number, velocity: number, p = { damping: 0.7, brightness: 0.8, body: 0.5, octave: 3 }) => {
+    const baseDecay = 0.1 + (1 - p.damping) * 2.5;
+
+    // Additive synthesis: fundamental + harmonics, each decaying at different rates
+    const harmonics: [number, number][] = [[1, 1.0], [2, 0.5], [3, 0.25], [4, 0.12], [5, 0.06], [6, 0.03]];
+    harmonics.forEach(([harmonic, amp]) => {
+      const osc  = ctx.createOscillator();
+      const gain = ctx.createGain();
+      // Higher harmonics decay faster; brightness controls how much they sustain
+      const harmDecay = baseDecay / (1 + (harmonic - 1) * (0.3 + p.brightness * 1.5));
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(freq * harmonic, time);
+      gain.gain.setValueAtTime(velocity * 0.45 * amp, time);
+      gain.gain.exponentialRampToValueAtTime(0.001, time + harmDecay);
+      osc.connect(gain); gain.connect(dest);
+      osc.start(time); osc.stop(time + harmDecay + 0.01);
+    });
+
+    // Short noise click for the initial attack transient
+    const clickLen  = Math.floor(ctx.sampleRate * 0.006);
+    const clickBuf  = ctx.createBuffer(1, clickLen, ctx.sampleRate);
+    const clickData = clickBuf.getChannelData(0);
+    for (let i = 0; i < clickLen; i++) clickData[i] = (Math.random() * 2 - 1) * (1 - i / clickLen);
+    const click       = ctx.createBufferSource();
+    click.buffer      = clickBuf;
+    const clickFilter = ctx.createBiquadFilter();
+    clickFilter.type  = 'bandpass';
+    clickFilter.frequency.setValueAtTime(freq * 2, time);
+    clickFilter.Q.setValueAtTime(2 + p.body * 4, time);
+    const clickGain = ctx.createGain();
+    clickGain.gain.setValueAtTime(velocity * 0.3, time);
+    clickGain.gain.exponentialRampToValueAtTime(0.001, time + 0.02);
+    click.connect(clickFilter); clickFilter.connect(clickGain); clickGain.connect(dest);
+    click.start(time); click.stop(time + 0.01);
+  };
+  return { playNote };
+};
+
+export const createChordStabEngine = (ctx: BaseAudioContext, dest: AudioNode) => {
+  const playNote = (time: number, freq: number, duration: number, velocity: number, p = { waveform: 'sawtooth', cutoff: 0.7, attack: 0.01, decay: 0.15, spread: 0.3 }) => {
+    const filter = ctx.createBiquadFilter();
+    filter.type = 'lowpass';
+    filter.frequency.setValueAtTime(200 + p.cutoff * 7800, time);
+    filter.Q.setValueAtTime(2, time);
+
+    const gain = ctx.createGain();
+    const attackTime = 0.001 + p.attack * 0.05;
+    const decayTime  = 0.05  + p.decay  * 0.8;
+
+    gain.gain.setValueAtTime(0, time);
+    gain.gain.linearRampToValueAtTime(velocity * 0.3, time + attackTime);
+    gain.gain.setValueAtTime(velocity * 0.3, time + duration);
+    gain.gain.linearRampToValueAtTime(0, time + duration + decayTime);
+
+    filter.connect(gain); gain.connect(dest);
+
+    const intervals = [0, 4 / 12, 7 / 12]; // root, major third, perfect fifth
+    intervals.forEach((interval, i) => {
+      const noteFreq = freq * Math.pow(2, interval);
+      const detuneAmount = (i - 1) * p.spread * 15;
+      const osc = ctx.createOscillator();
+      osc.type = p.waveform as OscillatorType;
+      osc.frequency.setValueAtTime(noteFreq, time);
+      osc.detune.setValueAtTime(detuneAmount, time);
+      osc.connect(filter);
+      osc.start(time); osc.stop(time + duration + decayTime + 0.05);
+    });
+  };
+  return { playNote };
+};
+
 export const noteToFreq = (note: string, octaveShift: number = 0) => {
   const notes = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
   const name = note.slice(0, -1); const octave = parseInt(note.slice(-1)) + octaveShift;

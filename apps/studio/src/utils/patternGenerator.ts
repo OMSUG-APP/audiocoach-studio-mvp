@@ -1,4 +1,4 @@
-import { DrumInstrument, Step, NoteStep } from '../types';
+import { DrumInstrument, Step, NoteStep, Drum2Track } from '../types';
 
 // ─── Public types ─────────────────────────────────────────────────────────────
 
@@ -121,6 +121,35 @@ export function generateDrumPattern(
   return result;
 }
 
+// ─── Drum2 generation ────────────────────────────────────────────────────────
+//
+// Maps 8 Elektron Drum 2 tracks to drum machine voice roles, generates 32 steps
+// (2 bars) by repeating the 16-step probability map with variation in bar 2.
+
+const DRUM2_INST_MAP: Record<string, DrumInstrument> = {
+  BD2: 'BD', SD2: 'SD', HH2: 'HC', OH2: 'OH', CL: 'HC', RIM: 'SD', CP: 'SD', CB: 'LT',
+};
+const DRUM2_VARIATION_TRACKS = ['CL', 'RIM', 'CP', 'CB'];
+
+export function generateDrum2Pattern(style: DrumStyle, density: Density): Drum2Track[] {
+  const trackNames = ['BD2', 'SD2', 'HH2', 'OH2', 'CL', 'RIM', 'CP', 'CB'];
+  const probMap    = DRUM_PROB_MAPS[style];
+  const threshold  = DENSITY_THRESHOLD[density];
+
+  return trackNames.map(name => {
+    const inst  = DRUM2_INST_MAP[name];
+    const probs = probMap[inst];
+    const steps = Array.from({ length: 32 }, (_, i) => {
+      const prob      = probs[i % 16];
+      const varFactor = DRUM2_VARIATION_TRACKS.includes(name) && i >= 16 ? 0.65 : 1.0;
+      const adjProb   = prob * varFactor;
+      const active    = adjProb >= threshold ? true : adjProb > 0 && r() < adjProb / threshold;
+      return { active, velocity: active ? humanVel(0.72 + prob * 0.22) : 0.8 };
+    });
+    return { name, steps };
+  });
+}
+
 // ─── Bass generation ─────────────────────────────────────────────────────────
 //
 // Each style defines primary (strong-beat) and secondary (off-beat) step pools.
@@ -203,6 +232,145 @@ export function generateSynthPattern(
     if (!active.has(i)) return { active: false, note: '', velocity: 0.6, length: 4 };
     const note = r() < 0.68 && chordTones.length ? pick(chordTones) : pick(notes);
     return { active: true, note: `${note}${octave}`, velocity: humanVel(0.65, 0.15), length: 4 };
+  });
+}
+
+// ─── Lead generation ──────────────────────────────────────────────────────────
+//
+// Melodic single-note lines with emphasis on off-beat and syncopated positions.
+
+const LEAD_STEP_PRIORITY = [0, 4, 8, 12, 2, 6, 10, 14, 1, 5, 9, 13, 3, 7, 11, 15];
+
+const LEAD_COUNT: Record<Density, [number, number]> = {
+  low: [2, 4], mid: [4, 7], high: [6, 10],
+};
+
+export function generateLeadPattern(
+  key: MusicalKey,
+  scale: ScaleName,
+  _style: DrumStyle,
+  density: Density,
+  octave: number,
+): NoteStep[] {
+  const notes = getScaleNotes(key, scale);
+  const [min, max] = LEAD_COUNT[density];
+  const count = randInt(min, max);
+  const shuffled = [...LEAD_STEP_PRIORITY].sort(() => r() - 0.5);
+  const active = new Set(shuffled.slice(0, count));
+  const chordTones = [0, 2, 4].map(idx => notes[idx]).filter(Boolean);
+
+  return Array.from({ length: 16 }, (_, i) => {
+    if (!active.has(i)) return { active: false, note: '', velocity: 0.6, length: 4 };
+    const note = r() < 0.6 && chordTones.length ? pick(chordTones) : pick(notes);
+    return { active: true, note: `${note}${octave}`, velocity: humanVel(0.7, 0.2), length: 4 };
+  });
+}
+
+// ─── FM generation ────────────────────────────────────────────────────────────
+//
+// Bell-like sparse hits, anchored to bar starts with long sustain.
+
+const FM_STEP_PRIORITY = [0, 8, 4, 12, 2, 10, 6, 14, 1, 9, 5, 13, 3, 11, 7, 15];
+
+const FM_COUNT: Record<Density, [number, number]> = {
+  low: [2, 3], mid: [3, 5], high: [5, 8],
+};
+
+export function generateFMPattern(
+  key: MusicalKey,
+  scale: ScaleName,
+  _style: DrumStyle,
+  density: Density,
+  octave: number,
+): NoteStep[] {
+  const notes = getScaleNotes(key, scale);
+  const [min, max] = FM_COUNT[density];
+  const count = randInt(min, max);
+  const shuffled = [...FM_STEP_PRIORITY].sort(() => r() - 0.5);
+  const active = new Set(shuffled.slice(0, count));
+  const chordTones = [0, 2, 4].map(idx => notes[idx]).filter(Boolean);
+
+  return Array.from({ length: 16 }, (_, i) => {
+    if (!active.has(i)) return { active: false, note: '', velocity: 0.6, length: 4 };
+    const note = r() < 0.72 && chordTones.length ? pick(chordTones) : pick(notes);
+    return { active: true, note: `${note}${octave}`, velocity: humanVel(0.6, 0.15), length: 4 };
+  });
+}
+
+// ─── Pluck generation ─────────────────────────────────────────────────────────
+//
+// Rhythmic plucked patterns with groove-aware positioning.
+
+const PLUCK_GROOVE_POOLS: Record<DrumStyle, { primary: number[]; secondary: number[] }> = {
+  house:  { primary: [0, 4, 8, 12],  secondary: [2, 6, 10, 14, 3, 11]    },
+  hiphop: { primary: [0, 6, 9],      secondary: [3, 4, 8, 10, 12, 14]    },
+  techno: { primary: [0, 4, 8, 12],  secondary: [2, 6, 10, 14, 1, 9]     },
+  dnb:    { primary: [0, 3, 9, 12],  secondary: [4, 6, 8, 11, 14]        },
+};
+
+const PLUCK_COUNT: Record<Density, [number, number]> = {
+  low: [3, 5], mid: [5, 8], high: [7, 12],
+};
+
+export function generatePluckPattern(
+  key: MusicalKey,
+  scale: ScaleName,
+  style: DrumStyle,
+  density: Density,
+  octave: number,
+): NoteStep[] {
+  const notes = getScaleNotes(key, scale);
+  const [min, max] = PLUCK_COUNT[density];
+  const count = randInt(min, max);
+  const { primary, secondary } = PLUCK_GROOVE_POOLS[style];
+  const pool = [...[...primary].sort(() => r() - 0.5), ...[...secondary].sort(() => r() - 0.5)];
+  const active = new Set(pool.slice(0, count));
+  const chordTones = [0, 2, 4].map(idx => notes[idx]).filter(Boolean);
+
+  return Array.from({ length: 16 }, (_, i) => {
+    if (!active.has(i)) return { active: false, note: '', velocity: 0.6, length: 4 };
+    const isStrong = primary.includes(i);
+    const note = isStrong && r() < 0.55
+      ? notes[0]
+      : r() < 0.6 && chordTones.length ? pick(chordTones) : pick(notes);
+    return { active: true, note: `${note}${octave}`, velocity: humanVel(0.65, 0.2), length: 4 };
+  });
+}
+
+// ─── Stab generation ─────────────────────────────────────────────────────────
+//
+// Short rhythmic stabs emphasising off-beat positions.
+
+const STAB_GROOVE_POOLS: Record<DrumStyle, { primary: number[]; secondary: number[] }> = {
+  house:  { primary: [4, 12],        secondary: [2, 6, 10, 14, 8]        },
+  hiphop: { primary: [4, 12],        secondary: [3, 6, 9, 10, 14]        },
+  techno: { primary: [0, 4, 8, 12],  secondary: [2, 6, 10, 14]           },
+  dnb:    { primary: [0, 9],         secondary: [3, 6, 12, 14]           },
+};
+
+const STAB_COUNT: Record<Density, [number, number]> = {
+  low: [2, 4], mid: [3, 6], high: [5, 9],
+};
+
+export function generateStabPattern(
+  key: MusicalKey,
+  scale: ScaleName,
+  style: DrumStyle,
+  density: Density,
+  octave: number,
+): NoteStep[] {
+  const notes = getScaleNotes(key, scale);
+  const [min, max] = STAB_COUNT[density];
+  const count = randInt(min, max);
+  const { primary, secondary } = STAB_GROOVE_POOLS[style];
+  const pool = [...[...primary].sort(() => r() - 0.5), ...[...secondary].sort(() => r() - 0.5)];
+  const active = new Set(pool.slice(0, count));
+  const chordTones = [0, 2, 4].map(idx => notes[idx]).filter(Boolean);
+
+  return Array.from({ length: 16 }, (_, i) => {
+    if (!active.has(i)) return { active: false, note: '', velocity: 0.6, length: 4 };
+    const note = r() < 0.65 && chordTones.length ? pick(chordTones) : pick(notes);
+    return { active: true, note: `${note}${octave}`, velocity: humanVel(0.75, 0.2), length: 4 };
   });
 }
 
