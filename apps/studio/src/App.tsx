@@ -25,6 +25,13 @@ export default function App() {
   const sampler = useSampler(project.mixer.sampler);
   const { isPlaying, currentStep, currentDrum2Step, currentPluckStep, currentPolySynthStep, togglePlay, analysers } = useAudioEngine(project, activePatternId, sampler.schedulePadAtTime);
 
+  // Inject sampler analyser into the shared analysers map
+  useEffect(() => {
+    if (analysers && sampler.analyser.current) {
+      analysers.current.sampler = sampler.analyser.current;
+    }
+  }, [analysers, sampler.analyser]);
+
   // Spacebar Play/Pause
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -83,7 +90,7 @@ export default function App() {
             <div className="w-4 h-4 bg-black rounded-sm rotate-45" />
           </div>
           <div className="flex flex-col">
-            <span className="text-[10px] uppercase tracking-[0.2em] text-[#FF5F00] font-bold leading-none">
+            <span className="text-[15px] uppercase tracking-[0.2em] text-[#FF5F00] font-bold leading-none">
               AudioCoach.ai
             </span>
             <input
@@ -134,7 +141,7 @@ export default function App() {
           <button
             key={tab}
             onClick={() => setActiveTab(tab)}
-            className="px-4 py-1.5 text-[9px] font-bold uppercase tracking-widest rounded-t transition-colors"
+            className="px-8 py-3 text-[18px] font-bold uppercase tracking-widest rounded-t transition-colors"
             style={activeTab === tab
               ? { background: '#111113', color: '#FF5F00', borderBottom: '2px solid #FF5F00' }
               : { background: 'transparent', color: '#555', borderBottom: '2px solid transparent' }

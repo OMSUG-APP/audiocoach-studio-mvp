@@ -137,12 +137,12 @@ export function RotaryKnob({
       </svg>
 
       {label && (
-        <span className="text-[8px] font-bold uppercase tracking-widest" style={{ color: '#666' }}>
+        <span className="text-[12px] font-bold uppercase tracking-widest" style={{ color: '#666' }}>
           {label}
         </span>
       )}
       {label && (
-        <span className="text-[9px] font-mono leading-none" style={{ color }}>
+        <span className="text-[13px] font-mono leading-none" style={{ color }}>
           {value.toFixed(step < 0.1 ? 2 : step < 1 ? 1 : 0)}
         </span>
       )}

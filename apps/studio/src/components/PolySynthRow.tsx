@@ -122,16 +122,18 @@ export const PolySynthRow: React.FC<PolySynthRowProps> = ({
 
   return (
     <InstrumentPanel
+      id="polysynth"
       title="Juno Poly Synth"
       poweredOn={poweredOn}
       onTogglePower={onTogglePower}
+      defaultExpanded={false}
       color="#A855F7"
     >
       <div className="p-3">
         {/* Step grid — 2 bars of 16, click any step to edit its notes */}
         <div className="flex gap-2 mb-1">
-          <div className="flex-1"><span className="text-[8px] text-[#333] tracking-widest">Bar 1</span></div>
-          <div className="flex-1"><span className="text-[8px] text-[#333] tracking-widest">Bar 2</span></div>
+          <div className="flex-1"><span className="text-[12px] text-[#333] tracking-widest">Bar 1</span></div>
+          <div className="flex-1"><span className="text-[12px] text-[#333] tracking-widest">Bar 2</span></div>
         </div>
         <div className="flex gap-2 mb-3">
           {[0, 1].map(bar => (
@@ -146,7 +148,7 @@ export const PolySynthRow: React.FC<PolySynthRowProps> = ({
                   <button
                     key={stepIndex}
                     onClick={() => openPicker(stepIndex)}
-                    className="h-8 rounded text-[8px] font-mono transition-all flex flex-col items-center justify-center relative overflow-hidden"
+                    className="h-8 rounded text-[12px] font-mono transition-all flex flex-col items-center justify-center relative overflow-hidden"
                     title={`Step ${stepIndex + 1}: ${step.chord.join(' ') || 'click to add notes'}`}
                     style={{
                       background: isCurrent ? '#A855F7' : isActive && hasChord ? '#6B21A8' : '#1a1a1e',
@@ -179,7 +181,7 @@ export const PolySynthRow: React.FC<PolySynthRowProps> = ({
               onClick={e => e.stopPropagation()}
             >
               <div className="flex items-center justify-between mb-4">
-                <span className="text-[10px] font-bold uppercase tracking-widest text-purple-400">
+                <span className="text-[15px] font-bold uppercase tracking-widest text-purple-400">
                   Step {editingStep + 1} — Select Notes
                 </span>
                 <button onClick={commitChord} className="text-[#555] hover:text-white text-xs">✕</button>
@@ -187,19 +189,19 @@ export const PolySynthRow: React.FC<PolySynthRowProps> = ({
 
               {/* Chord presets */}
               <div className="flex flex-wrap gap-1 mb-4">
-                <span className="text-[8px] text-[#444] uppercase tracking-widest self-center mr-1">Presets</span>
+                <span className="text-[12px] text-[#444] uppercase tracking-widest self-center mr-1">Presets</span>
                 {Object.entries(CHORD_PRESETS).map(([name, notes]) => (
                   <button
                     key={name}
                     onClick={() => applyPreset(notes)}
-                    className="px-2 py-0.5 text-[9px] font-bold rounded border border-purple-800 text-purple-300 hover:bg-purple-900 transition-colors"
+                    className="px-2 py-0.5 text-[13px] font-bold rounded border border-purple-800 text-purple-300 hover:bg-purple-900 transition-colors"
                   >
                     {name}
                   </button>
                 ))}
                 <button
                   onClick={() => setTempNotes([])}
-                  className="px-2 py-0.5 text-[9px] font-bold rounded border border-red-800 text-red-400 hover:bg-red-900 transition-colors ml-2"
+                  className="px-2 py-0.5 text-[13px] font-bold rounded border border-red-800 text-red-400 hover:bg-red-900 transition-colors ml-2"
                 >
                   Clear
                 </button>
@@ -214,19 +216,19 @@ export const PolySynthRow: React.FC<PolySynthRowProps> = ({
 
               {/* Selected notes */}
               <div className="flex items-center gap-2 mb-4 min-h-6 flex-wrap">
-                <span className="text-[8px] text-[#444] uppercase tracking-widest">Notes:</span>
+                <span className="text-[12px] text-[#444] uppercase tracking-widest">Notes:</span>
                 {tempNotes.length > 0 ? tempNotes.map(n => (
-                  <span key={n} className="px-1.5 py-0.5 rounded text-[9px] font-bold" style={{ background: '#3B1968', color: '#C084FC', border: '1px solid #6B21A8' }}>
+                  <span key={n} className="px-1.5 py-0.5 rounded text-[13px] font-bold" style={{ background: '#3B1968', color: '#C084FC', border: '1px solid #6B21A8' }}>
                     {n}
                   </span>
                 )) : (
-                  <span className="text-[9px] text-[#333]">No notes selected — click keys above</span>
+                  <span className="text-[13px] text-[#333]">No notes selected — click keys above</span>
                 )}
               </div>
 
               <button
                 onClick={commitChord}
-                className="w-full py-2 bg-purple-700 hover:bg-purple-600 text-white text-[9px] font-bold uppercase tracking-widest rounded transition-colors"
+                className="w-full py-2 bg-purple-700 hover:bg-purple-600 text-white text-[13px] font-bold uppercase tracking-widest rounded transition-colors"
               >
                 Apply to Step {editingStep + 1}
               </button>
@@ -245,7 +247,7 @@ export const PolySynthRow: React.FC<PolySynthRowProps> = ({
             { label: 'Chorus', key: 'chorus' },
           ].map(({ label, key }) => (
             <div key={key} className="flex flex-col gap-1 min-w-0">
-              <span className="text-[8px] uppercase tracking-wider text-[#555] text-center truncate">{label}</span>
+              <span className="text-[12px] uppercase tracking-wider text-[#555] text-center truncate">{label}</span>
               <input
                 type="range" min={0} max={1} step={0.01}
                 value={(params as any)[key] ?? 0.5}

@@ -98,6 +98,9 @@ export function triggerSamplerPad(
   triggerTime: number = ctx.currentTime,
 ): AudioBufferSourceNode {
   const { envelope: env, filter: flt, volume, pitch } = pad;
+  const loop   = pad.loop ?? false;
+  const pan    = pad.pan ?? 0;
+  const attack = pad.attack ?? 0.005;
 
   // Normalised start/end → seconds
   const startOffset  = Math.max(0, env.start) * buffer.duration;
@@ -108,6 +111,11 @@ export function triggerSamplerPad(
   const src = ctx.createBufferSource();
   src.buffer = buffer;
   src.detune.value = pitch * 100; // semitones → cents
+  src.loop = loop;
+  if (loop) {
+    src.loopStart = startOffset;
+    src.loopEnd   = endOffset;
+  }
 
   // Low-pass filter
   const lpf = ctx.createBiquadFilter();
@@ -115,32 +123,41 @@ export function triggerSamplerPad(
   lpf.frequency.value = Math.max(20, Math.min(20000, flt.cutoff));
   lpf.Q.value = Math.max(0.0001, flt.resonance);
 
+  // Stereo pan
+  const panner = ctx.createStereoPanner();
+  panner.pan.value = Math.max(-1, Math.min(1, pan));
+
   // Amplitude envelope
   const vca = ctx.createGain();
   const t0 = triggerTime;
   const level = env.length * volume;
-  const fadeInEnd = t0 + 0.005;                             // 5 ms click-prevention
-  const fadeOutDur = Math.max(0.005, env.envelope);
-  const fadeOutStart = t0 + Math.max(0, playDuration - fadeOutDur);
-  const fadeOutEnd   = fadeOutStart + fadeOutDur;
+  const attackDur   = Math.max(0.001, attack);
+  const fadeInEnd   = t0 + attackDur;
+  const fadeOutDur  = Math.max(0.005, env.envelope);
+  const fadeOutStart = loop ? Infinity : t0 + Math.max(0, playDuration - fadeOutDur);
+  const fadeOutEnd   = loop ? Infinity : fadeOutStart + fadeOutDur;
 
   vca.gain.setValueAtTime(0, t0);
   vca.gain.linearRampToValueAtTime(level, fadeInEnd);
-  vca.gain.setValueAtTime(level, fadeOutStart);
-  vca.gain.linearRampToValueAtTime(0.0001, fadeOutEnd);
+  if (!loop) {
+    vca.gain.setValueAtTime(level, fadeOutStart);
+    vca.gain.linearRampToValueAtTime(0.0001, fadeOutEnd);
+  }
 
-  // Connect
+  // Connect: src → lpf → panner → vca → destination
   src.connect(lpf);
-  lpf.connect(vca);
+  lpf.connect(panner);
+  panner.connect(vca);
   vca.connect(destination);
 
-  src.start(t0, startOffset, playDuration);
-  src.stop(fadeOutEnd + 0.02);
+  src.start(t0, startOffset, loop ? undefined : playDuration);
+  if (!loop) src.stop(fadeOutEnd + 0.02);
 
   // Auto-disconnect after playback to avoid node leaks
   src.onended = () => {
     src.disconnect();
     lpf.disconnect();
+    panner.disconnect();
     vca.disconnect();
   };
 

@@ -80,7 +80,7 @@ export function SamplerPadTile({
       >
         {/* Pad number badge */}
         <span
-          className="text-[8px] font-bold tracking-widest absolute top-1.5 left-2"
+          className="text-[12px] font-bold tracking-widest absolute top-1.5 left-2"
           style={{ color: status === 'loaded' ? pad.color : '#444' }}
         >
           {String(pad.id + 1).padStart(2, '0')}
@@ -88,7 +88,7 @@ export function SamplerPadTile({
 
         {/* Label */}
         <span
-          className="text-[9px] font-bold tracking-wider uppercase leading-tight text-center px-1"
+          className="text-[13px] font-bold tracking-wider uppercase leading-tight text-center px-1"
           style={{
             color: status === 'loaded' ? pad.color : status === 'error' ? '#ef4444' : '#555',
           }}
@@ -97,13 +97,13 @@ export function SamplerPadTile({
         </span>
 
         {status === 'idle' && (
-          <span className="text-[8px] text-[#333]">empty</span>
+          <span className="text-[12px] text-[#333]">empty</span>
         )}
       </button>
 
       {/* File-picker button — appears on hover in top-right corner */}
       <button
-        className="absolute top-1 right-1 w-5 h-5 rounded flex items-center justify-center text-[10px] text-[#555] hover:text-[#FF5F00] hover:bg-[#1a1a1e] transition-colors opacity-0 hover:opacity-100 group-hover:opacity-100"
+        className="absolute top-1 right-1 w-5 h-5 rounded flex items-center justify-center text-[15px] text-[#555] hover:text-[#FF5F00] hover:bg-[#1a1a1e] transition-colors opacity-0 hover:opacity-100 group-hover:opacity-100"
         style={{ opacity: isActive ? 1 : undefined }}
         title="Load sample"
         onMouseDown={e => {

@@ -34,6 +34,12 @@ export function ArrangementPage() {
     store.updateArrangementBlocks(blocks.filter(b => b.id !== id));
   }, [blocks, store]);
 
+  const wouldOverlap = (newBlock: ArrangementBlock, excludeId?: string): boolean => {
+    return blocks
+      .filter(b => b.id !== excludeId)
+      .some(b => newBlock.startBar < b.startBar + b.lengthBars && newBlock.startBar + newBlock.lengthBars > b.startBar);
+  };
+
   const addBlock = (patternId: string, startBar: number) => {
     const newBlock: ArrangementBlock = {
       id: `ab${Date.now()}`,
@@ -41,6 +47,7 @@ export function ArrangementPage() {
       startBar,
       lengthBars: 2,
     };
+    if (wouldOverlap(newBlock)) return;
     store.updateArrangementBlocks([...blocks, newBlock]);
   };
 
@@ -75,15 +82,21 @@ export function ArrangementPage() {
     if (dragging) {
       const bar = getBarFromX(e.clientX);
       const newStart = Math.max(0, bar - dragging.offsetBar);
-      updateBlock(dragging.id, { startBar: newStart });
+      const draggedBlock = blocks.find(b => b.id === dragging.id);
+      if (draggedBlock && !wouldOverlap({ ...draggedBlock, startBar: newStart }, dragging.id)) {
+        updateBlock(dragging.id, { startBar: newStart });
+      }
     }
     if (resizing) {
       const dx = e.clientX - resizing.startX;
       const barsDelta = Math.round(dx / BAR_WIDTH);
       const newLen = Math.max(1, resizing.startLen + barsDelta);
-      updateBlock(resizing.id, { lengthBars: newLen });
+      const resizedBlock = blocks.find(b => b.id === resizing.id);
+      if (resizedBlock && !wouldOverlap({ ...resizedBlock, lengthBars: newLen }, resizing.id)) {
+        updateBlock(resizing.id, { lengthBars: newLen });
+      }
     }
-  }, [dragging, resizing, updateBlock]);
+  }, [dragging, resizing, updateBlock, blocks, wouldOverlap]);
 
   const handleMouseUp = () => {
     setDragging(null);
@@ -93,17 +106,23 @@ export function ArrangementPage() {
   return (
     <div className="flex flex-col h-full bg-[#111113] border border-[#242428] rounded-lg shadow-lg overflow-hidden">
       <div className="flex items-center gap-4 px-4 py-3 border-b border-[#242428] bg-[#0d0d0f]">
-        <span className="text-[10px] font-bold uppercase tracking-widest text-[#FF5F00]">Arrangement</span>
-        <span className="text-[9px] text-[#444]">Click empty space to add block · Drag to move · Right edge to resize · Del to remove</span>
+        <span className="text-[15px] font-bold uppercase tracking-widest text-[#FF5F00]">Arrangement</span>
+        <span className="text-[13px] text-[#444]">Click empty space to add block · Drag to move · Right edge to resize</span>
+        <button
+          onClick={() => store.updateArrangementBlocks([])}
+          className="ml-auto px-3 py-1 text-[13px] font-bold uppercase tracking-widest rounded border border-[#ef4444] text-[#ef4444] hover:bg-[#ef4444] hover:text-white transition-colors"
+        >
+          Clear All
+        </button>
       </div>
 
       {/* Pattern palette */}
       <div className="flex items-center gap-2 px-4 py-2 border-b border-[#242428] bg-[#0a0a0b] flex-wrap">
-        <span className="text-[8px] uppercase tracking-widest text-[#333] mr-2">Patterns</span>
+        <span className="text-[12px] uppercase tracking-widest text-[#333] mr-2">Patterns</span>
         {patterns.map((p, i) => (
           <div
             key={p.id}
-            className="flex items-center gap-1 px-2 py-0.5 rounded text-[8px] font-bold"
+            className="flex items-center gap-1 px-2 py-0.5 rounded text-[12px] font-bold"
             style={{ background: patternColorMap[p.id] + '30', border: `1px solid ${patternColorMap[p.id]}`, color: patternColorMap[p.id] }}
           >
             <span>{p.name}</span>
@@ -117,7 +136,7 @@ export function ArrangementPage() {
           {Array.from({ length: totalBars }).map((_, i) => (
             <div
               key={i}
-              className="flex items-center justify-start px-1 border-l border-[#1a1a1e] text-[8px] text-[#333]"
+              className="flex items-center justify-start px-1 border-l border-[#1a1a1e] text-[12px] text-[#333]"
               style={{ width: BAR_WIDTH, flexShrink: 0 }}
             >
               {i + 1}
@@ -172,13 +191,12 @@ export function ArrangementPage() {
                   if (next) updateBlock(block.id, { patternId: next.id });
                 }}
               >
-                <span className="px-1.5 text-[8px] font-bold truncate flex-1" style={{ color }}>
+                <span className="px-1.5 text-[12px] font-bold truncate flex-1" style={{ color }}>
                   {pattern?.name || 'Unknown'}
                 </span>
                 {/* Delete */}
                 <button
-                  className="px-1 text-[8px] opacity-50 hover:opacity-100 flex-shrink-0"
-                  style={{ color }}
+                  className="px-1.5 py-0.5 text-[15px] font-bold rounded flex-shrink-0 bg-[#ef4444] text-white hover:bg-[#dc2626] transition-colors"
                   onMouseDown={e => e.stopPropagation()}
                   onClick={e => { e.stopPropagation(); deleteBlock(block.id); }}
                 >

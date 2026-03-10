@@ -80,6 +80,10 @@ interface ProjectStore {
 
   // Arrangement
   updateArrangementBlocks: (blocks: NonNullable<Project['arrangementBlocks']>) => void;
+
+  // UI state
+  collapsedPanels: Record<string, boolean>;
+  setCollapsedPanel: (id: string, collapsed: boolean) => void;
 }
 
 export const useProjectStore = create<ProjectStore>()(
@@ -430,6 +434,10 @@ export const useProjectStore = create<ProjectStore>()(
 
       updateArrangementBlocks: (blocks) =>
         set((s) => ({ project: { ...s.project, arrangementBlocks: blocks } })),
+
+      collapsedPanels: {},
+      setCollapsedPanel: (id, collapsed) =>
+        set((s) => ({ collapsedPanels: { ...s.collapsedPanels, [id]: collapsed } })),
     }),
     {
       name: 'sequencer-project',

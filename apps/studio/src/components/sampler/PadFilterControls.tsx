@@ -15,7 +15,7 @@ function fmtHz(hz: number): string {
 export function PadFilterControls({ filter, color, onChange }: PadFilterControlsProps) {
   return (
     <div className="flex flex-col gap-2">
-      <span className="text-[9px] font-bold text-[#8A8A94] uppercase tracking-widest">Filter (LP)</span>
+      <span className="text-[13px] font-bold text-[#8A8A94] uppercase tracking-widest">Filter (LP)</span>
       <div className="flex gap-6 justify-around">
         <RotaryKnob
           label="CUTOFF"
@@ -33,8 +33,8 @@ export function PadFilterControls({ filter, color, onChange }: PadFilterControls
         />
       </div>
       <div className="flex gap-6 justify-around">
-        <span className="text-[8px] font-mono text-center w-12" style={{ color }}>{fmtHz(filter.cutoff)}</span>
-        <span className="text-[8px] font-mono text-center w-12" style={{ color }}>Q {filter.resonance.toFixed(1)}</span>
+        <span className="text-[12px] font-mono text-center w-12" style={{ color }}>{fmtHz(filter.cutoff)}</span>
+        <span className="text-[12px] font-mono text-center w-12" style={{ color }}>Q {filter.resonance.toFixed(1)}</span>
       </div>
     </div>
   );

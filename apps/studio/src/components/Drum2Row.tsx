@@ -17,7 +17,7 @@ interface Drum2RowProps {
 const GenBtn = ({ onClick }: { onClick: () => void }) => (
   <button
     onClick={onClick}
-    className="flex items-center gap-1 px-2 py-1 text-[9px] font-bold rounded border border-[#242428] hover:border-[#22D3EE] hover:text-[#22D3EE] text-[#555] transition-colors uppercase tracking-widest flex-shrink-0"
+    className="flex items-center gap-1 px-2 py-1 text-[13px] font-bold rounded border border-[#242428] hover:border-[#22D3EE] hover:text-[#22D3EE] text-[#555] transition-colors uppercase tracking-widest flex-shrink-0"
   >
     <Shuffle size={9} />
     Generate
@@ -36,9 +36,11 @@ export const Drum2Row: React.FC<Drum2RowProps> = ({
   const BAR_SIZE = 16;
   return (
     <InstrumentPanel
+      id="drum2"
       title="Elektron Drum 2"
       poweredOn={poweredOn}
       onTogglePower={onTogglePower}
+      defaultExpanded={false}
       color="#22D3EE"
     >
       <div className="px-3 pb-3">
@@ -52,10 +54,10 @@ export const Drum2Row: React.FC<Drum2RowProps> = ({
         {/* Bar labels */}
         <div className="flex gap-2 mb-1 ml-[6.5rem]">
           <div className="flex-1 flex">
-            <span className="text-[8px] text-[#333] tracking-widest">Bar 1</span>
+            <span className="text-[12px] text-[#333] tracking-widest">Bar 1</span>
           </div>
           <div className="flex-1 flex">
-            <span className="text-[8px] text-[#333] tracking-widest">Bar 2</span>
+            <span className="text-[12px] text-[#333] tracking-widest">Bar 2</span>
           </div>
         </div>
 
@@ -67,7 +69,7 @@ export const Drum2Row: React.FC<Drum2RowProps> = ({
             return (
               <div key={trackIndex} className="flex items-center gap-2">
                 <span
-                  className="text-[9px] font-bold uppercase tracking-wider w-8 text-right flex-shrink-0"
+                  className="text-[13px] font-bold uppercase tracking-wider w-8 text-right flex-shrink-0"
                   style={{ color: '#22D3EE' }}
                 >
                   {track.name}
@@ -75,14 +77,14 @@ export const Drum2Row: React.FC<Drum2RowProps> = ({
                 <div className="flex items-center gap-1 flex-shrink-0">
                   <button
                     onClick={() => onUpdateTrackParam(trackIndex, 'mute', !isMuted)}
-                    className="text-[9px] font-bold px-1.5 py-0.5 rounded border transition-colors"
+                    className="text-[13px] font-bold px-1.5 py-0.5 rounded border transition-colors"
                     style={isMuted
                       ? { background: '#ef4444', borderColor: '#ef4444', color: '#fff' }
                       : { background: 'transparent', borderColor: '#333338', color: '#666' }}
                   >M</button>
                   <button
                     onClick={() => onUpdateTrackParam(trackIndex, 'solo', !isSoloed)}
-                    className="text-[9px] font-bold px-1.5 py-0.5 rounded border transition-colors"
+                    className="text-[13px] font-bold px-1.5 py-0.5 rounded border transition-colors"
                     style={isSoloed
                       ? { background: '#22D3EE', borderColor: '#22D3EE', color: '#000' }
                       : { background: 'transparent', borderColor: '#333338', color: '#666' }}
@@ -126,10 +128,10 @@ export const Drum2Row: React.FC<Drum2RowProps> = ({
         <div className="mt-4 flex gap-3 overflow-x-auto items-center pb-1">
           {tracks.map((track, trackIndex) => (
             <div key={trackIndex} className="flex flex-col bg-[#0A0A0B] p-3 rounded border border-[#242428] min-w-[110px] flex-shrink-0">
-              <div className="text-[9px] font-bold mb-3 text-center tracking-widest" style={{ color: '#22D3EE' }}>{track.name}</div>
+              <div className="text-[13px] font-bold mb-3 text-center tracking-widest" style={{ color: '#22D3EE' }}>{track.name}</div>
               <div className="flex flex-col gap-2">
                 <div className="flex items-center gap-2">
-                  <span className="text-[9px] text-[#8A8A94] uppercase w-8 tracking-widest">Tune</span>
+                  <span className="text-[13px] text-[#8A8A94] uppercase w-8 tracking-widest">Tune</span>
                   <input
                     type="range" min="0" max="1" step="0.01"
                     value={track.tune ?? 0.5}
@@ -139,7 +141,7 @@ export const Drum2Row: React.FC<Drum2RowProps> = ({
                   />
                 </div>
                 <div className="flex items-center gap-2">
-                  <span className="text-[9px] text-[#8A8A94] uppercase w-8 tracking-widest">Dcy</span>
+                  <span className="text-[13px] text-[#8A8A94] uppercase w-8 tracking-widest">Dcy</span>
                   <input
                     type="range" min="0" max="1" step="0.01"
                     value={track.decay ?? 0.5}

@@ -153,13 +153,13 @@ function KnobRow({
 }) {
   return (
     <div className="flex items-center gap-1.5 w-full">
-      <span className="text-[8px] font-bold uppercase tracking-widest text-[#555] w-6 flex-shrink-0">{label}</span>
+      <span className="text-[12px] font-bold uppercase tracking-widest text-[#555] w-6 flex-shrink-0">{label}</span>
       <RotaryKnob
         label="" min={min} max={max} step={step}
         value={value} onChange={onChange} color={color} size={32}
         className="flex-shrink-0"
       />
-      <span className="text-[8px] font-mono text-[#555] w-8 text-right flex-shrink-0 tabular-nums">
+      <span className="text-[12px] font-mono text-[#555] w-8 text-right flex-shrink-0 tabular-nums">
         {value.toFixed(min < 0 ? 0 : step < 0.1 ? 2 : 1)}
       </span>
     </div>
@@ -176,14 +176,15 @@ const DEFAULT_CHANNEL: ChannelMixer = {
 };
 
 /* ─── Channel strip ──────────────────────────────────────────────────────── */
-function ChannelStrip({
-  label, color, channel, onChange, analyser,
-}: {
-  label: string; color: string;
+interface ChannelStripProps {
+  label: string;
+  color: string;
   channel: ChannelMixer;
   onChange: (ch: ChannelMixer) => void;
   analyser?: AnalyserNode | null;
-}) {
+}
+
+const ChannelStrip: React.FC<ChannelStripProps> = ({ label, color, channel, onChange, analyser }) => {
   const ch    = channel || DEFAULT_CHANNEL;
   const eq    = ch.eq    || { low: 0, mid: 0, high: 0 };
   const delay = ch.delay || { time: 0.3, feedback: 0.3, mix: 0 };
@@ -201,7 +202,7 @@ function ChannelStrip({
     >
       {/* Name */}
       <div
-        className="text-[9px] font-bold uppercase tracking-widest pb-3 px-3 w-full text-center border-b border-[#242428]"
+        className="text-[13px] font-bold uppercase tracking-widest pb-3 px-3 w-full text-center border-b border-[#242428]"
         style={{ color }}
       >
         {label}
@@ -229,13 +230,13 @@ function ChannelStrip({
           />
           <VuBar analyser={analyser} color={color} height={130} />
         </div>
-        <span className="text-[8px] font-mono mt-1 tabular-nums" style={{ color }}>
+        <span className="text-[12px] font-mono mt-1 tabular-nums" style={{ color }}>
           {((ch.volume ?? 0.8) * 100).toFixed(0)}
         </span>
       </div>
     </div>
   );
-}
+};
 
 /* ─── Master strip ───────────────────────────────────────────────────────── */
 function MasterStrip({
@@ -251,12 +252,12 @@ function MasterStrip({
       className="flex flex-col items-center py-4 border border-[#FF5F00]/40 rounded-lg bg-[#0d0d0f]"
       style={{ minWidth: 110 }}
     >
-      <div className="text-[9px] font-bold uppercase tracking-widest pb-3 px-3 w-full text-center border-b border-[#FF5F00]/20 text-[#FF5F00]">
+      <div className="text-[13px] font-bold uppercase tracking-widest pb-3 px-3 w-full text-center border-b border-[#FF5F00]/20 text-[#FF5F00]">
         Master
       </div>
 
       <div className="flex flex-col gap-1 px-3 pt-3 pb-2 w-full border-b border-[#242428]">
-        <span className="text-[7px] uppercase tracking-widest text-[#333] text-center mb-0.5">Comp</span>
+        <span className="text-[11px] uppercase tracking-widest text-[#333] text-center mb-0.5">Comp</span>
         <KnobRow label="THR" value={comp.threshold} min={-40} max={0}   step={1}     color="#FF5F00" onChange={v => onUpdate({ compressor: { ...comp, threshold: v } })} />
         <KnobRow label="RAT" value={comp.ratio}     min={1}   max={20}  step={0.5}   color="#FF5F00" onChange={v => onUpdate({ compressor: { ...comp, ratio: v } })} />
         <KnobRow label="ATK" value={comp.attack}    min={0}   max={0.1} step={0.001} color="#FF5F00" onChange={v => onUpdate({ compressor: { ...comp, attack: v } })} />
@@ -274,7 +275,7 @@ function MasterStrip({
           />
           <VuBar analyser={analyser} color="#FF5F00" height={130} />
         </div>
-        <span className="text-[8px] font-mono mt-1 text-[#FF5F00] tabular-nums">
+        <span className="text-[12px] font-mono mt-1 text-[#FF5F00] tabular-nums">
           {(mixer.volume * 100).toFixed(0)}
         </span>
       </div>
@@ -311,7 +312,7 @@ export function MixerPage({
       <style>{FADER_STYLE}</style>
       <div className="flex flex-col h-full bg-[#111113] border border-[#242428] rounded-lg shadow-lg overflow-hidden">
         <div className="px-4 py-3 border-b border-[#242428] bg-[#0d0d0f] flex-shrink-0">
-          <span className="text-[10px] font-bold uppercase tracking-widest text-[#FF5F00]">Mixer</span>
+          <span className="text-[15px] font-bold uppercase tracking-widest text-[#FF5F00]">Mixer</span>
         </div>
         <div className="flex-1 overflow-x-auto overflow-y-hidden p-4">
           <div className="flex gap-2 min-w-max h-full">

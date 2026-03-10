@@ -3,6 +3,7 @@ import { UseSamplerReturn } from '../../hooks/useSampler';
 import { ChannelMixer } from '../../types';
 import { PadGrid } from './PadGrid';
 import { PadDetailPanel } from './PadDetailPanel';
+import { generatePadSound } from '../../utils/generateSound';
 
 type SamplerViewProps = UseSamplerReturn & {
   mixerChannel?: ChannelMixer;
@@ -14,7 +15,7 @@ const FxRow = ({ label, value, min = 0, max = 1, step = 0.01, color, unit = '%',
   color: string; unit?: string; onChange: (v: number) => void;
 }) => (
   <div className="flex items-center gap-2 min-w-0">
-    <span className="text-[9px] text-[#8A8A94] font-bold tracking-widest w-10 flex-shrink-0">{label}</span>
+    <span className="text-[13px] text-[#8A8A94] font-bold tracking-widest w-10 flex-shrink-0">{label}</span>
     <div className="flex-1 min-w-0 overflow-hidden">
       <input
         type="range" min={min} max={max} step={step} value={value}
@@ -23,7 +24,7 @@ const FxRow = ({ label, value, min = 0, max = 1, step = 0.01, color, unit = '%',
         style={{ accentColor: color }}
       />
     </div>
-    <span className="text-[9px] font-mono text-right w-10 flex-shrink-0" style={{ color }}>
+    <span className="text-[13px] font-mono text-right w-10 flex-shrink-0" style={{ color }}>
       {unit === 's' ? `${value.toFixed(2)}s` : `${Math.round(value * 100)}%`}
     </span>
   </div>
@@ -33,8 +34,9 @@ export function SamplerView({
   pads, padLoadStatus, activePadId, masterVolume, padWaveforms,
   loadPadFile, clearPad, triggerPad, setActivePad,
   updatePadLabel, updatePadVolume, updatePadPitch,
+  updatePadPan, updatePadLoop, updatePadAttack,
   updatePadEnvelope, updatePadFilter, updatePadMute, updatePadSolo,
-  updateMasterVolume,
+  updateMasterVolume, loadPadBuffer,
   mixerChannel,
   onMixerChannelChange,
 }: SamplerViewProps) {
@@ -51,7 +53,7 @@ export function SamplerView({
     <div className="flex gap-4 h-full">
 
       {/* ── Left: pad grid + fx + master volume ──────────────────────────── */}
-      <div className="flex flex-col gap-3 w-[288px] flex-shrink-0">
+      <div className="flex flex-col gap-3 flex-shrink-0" style={{ width: '33%', minWidth: 280 }}>
         <PadGrid
           pads={pads}
           padLoadStatus={padLoadStatus}
@@ -64,12 +66,12 @@ export function SamplerView({
         {/* FX panel */}
         {mixerChannel && onMixerChannelChange && (
           <div className="bg-[#111113] border border-[#242428] rounded-lg p-3 flex flex-col gap-2">
-            <span className="text-[9px] font-bold uppercase tracking-widest" style={{ color: '#22d3ee' }}>
+            <span className="text-[13px] font-bold uppercase tracking-widest" style={{ color: '#22d3ee' }}>
               FX
             </span>
 
             <div className="flex flex-col gap-1.5">
-              <span className="text-[9px] text-[#8A8A94] tracking-widest uppercase font-bold">REVERB</span>
+              <span className="text-[13px] text-[#8A8A94] tracking-widest uppercase font-bold">REVERB</span>
               <FxRow
                 label="SEND" value={mixerChannel.reverb ?? 0}
                 color="#60a5fa"
@@ -80,7 +82,7 @@ export function SamplerView({
             <div className="border-t border-[#242428]" />
 
             <div className="flex flex-col gap-1.5">
-              <span className="text-[9px] text-[#8A8A94] tracking-widest uppercase font-bold">DELAY</span>
+              <span className="text-[13px] text-[#8A8A94] tracking-widest uppercase font-bold">DELAY</span>
               <FxRow
                 label="SEND" value={delay.mix}
                 color="#a78bfa"
@@ -104,11 +106,11 @@ export function SamplerView({
 
         {/* Master volume strip */}
         <div className="bg-[#111113] border border-[#242428] rounded-lg p-3 flex flex-col gap-2">
-          <span className="text-[9px] font-bold text-[#8A8A94] uppercase tracking-widest">
+          <span className="text-[13px] font-bold text-[#8A8A94] uppercase tracking-widest">
             Master Output
           </span>
           <div className="flex items-center gap-2 min-w-0">
-            <span className="text-[9px] text-[#8A8A94] uppercase tracking-widest w-10 flex-shrink-0">
+            <span className="text-[13px] text-[#8A8A94] uppercase tracking-widest w-10 flex-shrink-0">
               Vol
             </span>
             <div className="flex-1 min-w-0 overflow-hidden">
@@ -121,14 +123,14 @@ export function SamplerView({
                 style={{ accentColor: '#FF5F00' }}
               />
             </div>
-            <span className="text-[9px] font-mono w-10 text-right flex-shrink-0 text-[#FF5F00]">
+            <span className="text-[13px] font-mono w-10 text-right flex-shrink-0 text-[#FF5F00]">
               {Math.round(masterVolume * 100)}%
             </span>
           </div>
         </div>
 
         {/* Pad count info */}
-        <p className="text-[8px] text-[#444] text-center tracking-widest px-2">
+        <p className="text-[12px] text-[#444] text-center tracking-widest px-2">
           {padLoadStatus.filter(s => s === 'loaded').length} / 16 pads loaded
           &nbsp;·&nbsp;drag audio files onto pads
         </p>
@@ -143,6 +145,9 @@ export function SamplerView({
           onUpdateLabel={label  => updatePadLabel(activePadId, label)}
           onUpdateVolume={v     => updatePadVolume(activePadId, v)}
           onUpdatePitch={v      => updatePadPitch(activePadId, v)}
+          onUpdatePan={v        => updatePadPan?.(activePadId, v)}
+          onUpdateLoop={v       => updatePadLoop?.(activePadId, v)}
+          onUpdateAttack={v     => updatePadAttack?.(activePadId, v)}
           onUpdateEnvelope={env => updatePadEnvelope(activePadId, env)}
           onUpdateFilter={f     => updatePadFilter(activePadId, f)}
           onUpdateMute={v       => updatePadMute(activePadId, v)}
@@ -150,6 +155,10 @@ export function SamplerView({
           onClear={()  => clearPad(activePadId)}
           onTrigger={() => triggerPad(activePadId)}
           onLoadFile={file => loadPadFile(activePadId, file)}
+          onGenerate={async (category) => {
+            const { buffer, label } = await generatePadSound(activePadId, category);
+            loadPadBuffer(activePadId, buffer, label);
+          }}
         />
       </div>
 

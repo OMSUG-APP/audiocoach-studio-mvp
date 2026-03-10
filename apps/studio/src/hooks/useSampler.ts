@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback, useEffect } from 'react';
+import React, { useState, useRef, useCallback, useEffect } from 'react';
 import {
   SamplerPad, SamplerEnvelope, SamplerFilter, PadLoadStatus, ChannelMixer,
 } from '../types';
@@ -12,11 +12,13 @@ export interface UseSamplerReturn {
   // State
   pads: SamplerPad[];
   padLoadStatus: PadLoadStatus[];
+  samplerBuffers: (AudioBuffer | null)[];
   activePadId: number;
   masterVolume: number;
 
   // File management
   loadPadFile: (padId: number, file: File) => Promise<void>;
+  loadPadBuffer: (padId: number, buffer: AudioBuffer, label: string) => void;
   clearPad: (padId: number) => void;
 
   // Playback
@@ -32,6 +34,9 @@ export interface UseSamplerReturn {
   updatePadLabel: (padId: number, label: string) => void;
   updatePadVolume: (padId: number, volume: number) => void;
   updatePadPitch: (padId: number, pitch: number) => void;
+  updatePadPan: (padId: number, pan: number) => void;
+  updatePadLoop: (padId: number, loop: boolean) => void;
+  updatePadAttack: (padId: number, attack: number) => void;
   updatePadEnvelope: (padId: number, env: Partial<SamplerEnvelope>) => void;
   updatePadFilter: (padId: number, filter: Partial<SamplerFilter>) => void;
   updatePadMute: (padId: number, mute: boolean) => void;
@@ -39,6 +44,9 @@ export interface UseSamplerReturn {
 
   // Master
   updateMasterVolume: (volume: number) => void;
+
+  // Analyser (for VU metering in mixer)
+  analyser: React.MutableRefObject<AnalyserNode | null>;
 
   // Waveform peaks for display (256 values, 0-1 range; null if pad not loaded)
   padWaveforms: (number[] | null)[];
@@ -83,6 +91,7 @@ export function useSampler(mixerChannel?: ChannelMixer): UseSamplerReturn {
   const eqLowRef   = useRef<BiquadFilterNode | null>(null);
   const eqMidRef   = useRef<BiquadFilterNode | null>(null);
   const eqHighRef  = useRef<BiquadFilterNode | null>(null);
+  const analyserRef = useRef<AnalyserNode | null>(null);
 
   // FX buses
   const reverbRef      = useRef<ConvolverNode | null>(null);
@@ -138,6 +147,9 @@ export function useSampler(mixerChannel?: ChannelMixer): UseSamplerReturn {
       master.connect(eqLow);
       eqLow.connect(eqMid);
       eqMid.connect(eqHigh);
+      const analyser = ctx.createAnalyser(); analyser.fftSize = 256;
+      eqHigh.connect(analyser);
+      analyserRef.current = analyser;
       eqHigh.connect(ctx.destination); // dry path
 
       // ── Reverb send ─────────────────────────────────────────────────────
@@ -240,6 +252,26 @@ export function useSampler(mixerChannel?: ChannelMixer): UseSamplerReturn {
     });
   }, [ensureCtx, updatePad]);
 
+  const loadPadBuffer = useCallback((padId: number, buffer: AudioBuffer, label: string) => {
+    buffersRef.current[padId] = buffer;
+    const channelData = buffer.getChannelData(0);
+    const bins = 256;
+    const blockSize = Math.max(1, Math.floor(channelData.length / bins));
+    const peaks: number[] = [];
+    for (let i = 0; i < bins; i++) {
+      let max = 0;
+      const offset = i * blockSize;
+      for (let j = 0; j < blockSize; j++) {
+        const abs = Math.abs(channelData[offset + j] ?? 0);
+        if (abs > max) max = abs;
+      }
+      peaks.push(max);
+    }
+    setPadWaveforms(prev => { const next = [...prev]; next[padId] = peaks; return next; });
+    updatePad(padId, { fileName: label, label: label.slice(0, 14).toUpperCase() });
+    setPadLoadStatus(prev => { const next = [...prev]; next[padId] = 'loaded'; return next; });
+  }, [updatePad]);
+
   const clearPad = useCallback((padId: number) => {
     const existing = activeSourcesRef.current.get(padId);
     if (existing) { try { existing.stop(); } catch { /* already ended */ } }
@@ -300,6 +332,9 @@ export function useSampler(mixerChannel?: ChannelMixer): UseSamplerReturn {
   const updatePadLabel    = useCallback((id: number, label: string) => updatePad(id, { label }), [updatePad]);
   const updatePadVolume   = useCallback((id: number, volume: number) => updatePad(id, { volume }), [updatePad]);
   const updatePadPitch    = useCallback((id: number, pitch: number) => updatePad(id, { pitch }), [updatePad]);
+  const updatePadPan      = useCallback((id: number, pan: number) => updatePad(id, { pan }), [updatePad]);
+  const updatePadLoop     = useCallback((id: number, loop: boolean) => updatePad(id, { loop }), [updatePad]);
+  const updatePadAttack   = useCallback((id: number, attack: number) => updatePad(id, { attack }), [updatePad]);
   const updatePadMute     = useCallback((id: number, mute: boolean) => updatePad(id, { mute }), [updatePad]);
   const updatePadSolo     = useCallback((id: number, solo: boolean) => updatePad(id, { solo }), [updatePad]);
 
@@ -320,9 +355,12 @@ export function useSampler(mixerChannel?: ChannelMixer): UseSamplerReturn {
 
   return {
     pads, padLoadStatus, activePadId, masterVolume, padWaveforms,
-    loadPadFile, clearPad, triggerPad, schedulePadAtTime,
+    samplerBuffers: buffersRef.current,
+    analyser: analyserRef,
+    loadPadFile, loadPadBuffer, clearPad, triggerPad, schedulePadAtTime,
     setActivePad: setActivePadId,
     updatePadLabel, updatePadVolume, updatePadPitch,
+    updatePadPan, updatePadLoop, updatePadAttack,
     updatePadEnvelope, updatePadFilter, updatePadMute, updatePadSolo,
     updateMasterVolume,
   };

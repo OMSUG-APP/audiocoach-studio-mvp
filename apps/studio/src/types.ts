@@ -62,6 +62,9 @@ export interface SamplerPad {
   fileName: string | null;
   volume: number;       // 0.0 – 1.5
   pitch: number;        // semitones -24 – +24
+  pan?: number;         // -1.0 (L) – +1.0 (R), default 0
+  loop?: boolean;       // loop playback, default false
+  attack?: number;      // amplitude attack seconds 0 – 2, default 0.005
   envelope: SamplerEnvelope;
   filter: SamplerFilter;
   mute: boolean;

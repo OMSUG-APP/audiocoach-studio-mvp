@@ -113,7 +113,7 @@ interface PillProps { key?: React.Key; label: string; active: boolean; color?: s
 const Pill = ({ label, active, color = '#FF5F00', onClick }: PillProps) => (
   <button
     onClick={onClick}
-    className="px-2 py-0.5 text-[9px] font-bold rounded transition-colors uppercase tracking-widest"
+    className="px-2 py-0.5 text-[13px] font-bold rounded transition-colors uppercase tracking-widest"
     style={active
       ? { background: color, color: color === '#FF5F00' ? '#000' : '#fff' }
       : { background: '#1a1a1e', color: '#8A8A94', border: '1px solid #242428' }}
@@ -126,7 +126,7 @@ const Pill = ({ label, active, color = '#FF5F00', onClick }: PillProps) => (
 const GenBtn = ({ onClick }: { onClick: () => void }) => (
   <button
     onClick={onClick}
-    className="flex items-center gap-1 px-2 py-1 text-[9px] font-bold rounded border border-[#242428] hover:border-[#FF5F00] hover:text-[#FF5F00] text-[#555] transition-colors uppercase tracking-widest flex-shrink-0"
+    className="flex items-center gap-1 px-2 py-1 text-[13px] font-bold rounded border border-[#242428] hover:border-[#FF5F00] hover:text-[#FF5F00] text-[#555] transition-colors uppercase tracking-widest flex-shrink-0"
   >
     <Shuffle size={9} />
     Generate
@@ -209,21 +209,21 @@ export function PatternEditor({
   };
 
   // ── Select style ──────────────────────────────────────────────────────────
-  const selectCls = 'bg-[#1a1a1e] border border-[#242428] text-[#F0F0F2] text-[9px] rounded px-1.5 py-0.5 cursor-pointer focus:outline-none focus:border-[#FF5F00]';
+  const selectCls = 'bg-[#1a1a1e] border border-[#242428] text-[#F0F0F2] text-[13px] rounded px-1.5 py-0.5 cursor-pointer focus:outline-none focus:border-[#FF5F00]';
 
   return (
     <div className="flex flex-col">
 
       {/* ── GENERATOR BAR ─────────────────────────────────────────────────── */}
       <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 px-3 py-2 bg-[#0A0A0B] border-b border-[#FF5F00] border-opacity-20 mb-1">
-        <span className="text-[9px] font-bold text-[#FF5F00] uppercase tracking-widest flex items-center gap-1 flex-shrink-0">
+        <span className="text-[13px] font-bold text-[#FF5F00] uppercase tracking-widest flex items-center gap-1 flex-shrink-0">
           <Shuffle size={10} />
           Generator
         </span>
 
         {/* Key */}
         <div className="flex items-center gap-1.5 flex-shrink-0">
-          <span className="text-[9px] text-[#8A8A94] uppercase tracking-widest">Key</span>
+          <span className="text-[13px] text-[#8A8A94] uppercase tracking-widest">Key</span>
           <select value={genKey} onChange={e => setGenKey(e.target.value as MusicalKey)} className={selectCls}>
             {MUSICAL_KEYS.map(k => <option key={k} value={k}>{k}</option>)}
           </select>
@@ -231,7 +231,7 @@ export function PatternEditor({
 
         {/* Scale */}
         <div className="flex items-center gap-1.5 flex-shrink-0">
-          <span className="text-[9px] text-[#8A8A94] uppercase tracking-widest">Scale</span>
+          <span className="text-[13px] text-[#8A8A94] uppercase tracking-widest">Scale</span>
           <select value={genScale} onChange={e => setGenScale(e.target.value as ScaleName)} className={selectCls}>
             {SCALE_NAMES.map(s => <option key={s} value={s}>{s}</option>)}
           </select>
@@ -239,7 +239,7 @@ export function PatternEditor({
 
         {/* Style */}
         <div className="flex items-center gap-1 flex-shrink-0">
-          <span className="text-[9px] text-[#8A8A94] uppercase tracking-widest mr-1">Style</span>
+          <span className="text-[13px] text-[#8A8A94] uppercase tracking-widest mr-1">Style</span>
           {DRUM_STYLES.map(s => (
             <Pill key={s} label={DRUM_STYLE_LABELS[s]} active={genStyle === s} onClick={() => setGenStyle(s)} />
           ))}
@@ -247,7 +247,7 @@ export function PatternEditor({
 
         {/* Density */}
         <div className="flex items-center gap-1 flex-shrink-0">
-          <span className="text-[9px] text-[#8A8A94] uppercase tracking-widest mr-1">Density</span>
+          <span className="text-[13px] text-[#8A8A94] uppercase tracking-widest mr-1">Density</span>
           {(['low', 'mid', 'high'] as Density[]).map(d => (
             <Pill key={d} label={d} active={genDensity === d} onClick={() => setGenDensity(d)} />
           ))}
@@ -256,20 +256,22 @@ export function PatternEditor({
 
       {/* ── DRUM MACHINE ───────────────────────────────────────────────────── */}
       <InstrumentPanel
+        id="drums"
         title="Drum Machine"
         poweredOn={drumsPoweredOn}
         onTogglePower={() => onToggleDrumsPower?.()}
+        defaultExpanded={true}
         color="#FF5F00"
       >
         <div className="px-3 pb-3">
           {/* Kit selector */}
           <div className="flex items-center gap-3 py-2 border-b border-[#242428] mb-3">
-            <span className="text-[9px] font-bold text-[#8A8A94] uppercase tracking-widest">Kit</span>
+            <span className="text-[13px] font-bold text-[#8A8A94] uppercase tracking-widest">Kit</span>
             {(['808', '909'] as const).map(kit => (
               <button
                 key={kit}
                 onClick={() => onDrumKitChange?.(kit)}
-                className="px-3 py-1 text-[9px] font-bold rounded transition-colors uppercase tracking-widest"
+                className="px-3 py-1 text-[13px] font-bold rounded transition-colors uppercase tracking-widest"
                 style={
                   drumKit === kit
                     ? { background: '#FF5F00', color: '#000', boxShadow: '0 0 8px rgba(255,95,0,0.4)' }
@@ -293,18 +295,18 @@ export function PatternEditor({
                 const isSoloed = p.solo  ?? false;
                 return (
                   <div key={inst} className="flex items-center gap-2">
-                    <div className="w-7 flex-shrink-0 text-[10px] font-bold text-[#8A8A94] tracking-wider">{inst}</div>
+                    <div className="w-7 flex-shrink-0 text-[15px] font-bold text-[#8A8A94] tracking-wider">{inst}</div>
                     <div className="flex items-center gap-1 flex-shrink-0">
                       <button
                         onClick={() => onUpdateDrumParam(inst, 'mute', !isMuted)}
-                        className="text-[9px] font-bold px-1.5 py-0.5 rounded border transition-colors"
+                        className="text-[13px] font-bold px-1.5 py-0.5 rounded border transition-colors"
                         style={isMuted
                           ? { background: '#ef4444', borderColor: '#ef4444', color: '#fff' }
                           : { background: 'transparent', borderColor: '#333338', color: '#666' }}
                       >M</button>
                       <button
                         onClick={() => onUpdateDrumParam(inst, 'solo', !isSoloed)}
-                        className="text-[9px] font-bold px-1.5 py-0.5 rounded border transition-colors"
+                        className="text-[13px] font-bold px-1.5 py-0.5 rounded border transition-colors"
                         style={isSoloed
                           ? { background: '#FF5F00', borderColor: '#FF5F00', color: '#000' }
                           : { background: 'transparent', borderColor: '#333338', color: '#666' }}
@@ -345,14 +347,14 @@ export function PatternEditor({
               const p = drumParams[inst] || { tune: 0.5, decay: 0.5 };
               return (
                 <div key={inst} className="flex flex-col bg-[#0A0A0B] p-3 rounded border border-[#242428] min-w-[110px] flex-shrink-0">
-                  <div className="text-[9px] font-bold text-[#FF5F00] mb-3 text-center tracking-widest">{inst}</div>
+                  <div className="text-[13px] font-bold text-[#FF5F00] mb-3 text-center tracking-widest">{inst}</div>
                   <div className="flex flex-col gap-2">
                     <div className="flex items-center gap-2">
-                      <span className="text-[9px] text-[#8A8A94] uppercase w-8 tracking-widest">Tune</span>
+                      <span className="text-[13px] text-[#8A8A94] uppercase w-8 tracking-widest">Tune</span>
                       <input type="range" min="0" max="1" step="0.01" value={p.tune} onChange={e => onUpdateDrumParam(inst, 'tune', parseFloat(e.target.value))} className="flex-1 h-1 bg-[#1a1a1e] rounded-lg cursor-pointer" style={{ accentColor: '#FF5F00' }} />
                     </div>
                     <div className="flex items-center gap-2">
-                      <span className="text-[9px] text-[#8A8A94] uppercase w-8 tracking-widest">Dcy</span>
+                      <span className="text-[13px] text-[#8A8A94] uppercase w-8 tracking-widest">Dcy</span>
                       <input type="range" min="0" max="1" step="0.01" value={p.decay} onChange={e => onUpdateDrumParam(inst, 'decay', parseFloat(e.target.value))} className="flex-1 h-1 bg-[#1a1a1e] rounded-lg cursor-pointer" style={{ accentColor: '#FF5F00' }} />
                     </div>
                   </div>
@@ -382,9 +384,11 @@ export function PatternEditor({
       {/* ── SAMPLER SECTION ────────────────────────────────────────────────── */}
       <div className="mt-4">
         <InstrumentPanel
+          id="sampler"
           title="Sample Pads"
           poweredOn={samplerPoweredOn}
           onTogglePower={() => onToggleSamplerPower?.()}
+          defaultExpanded={false}
           color="#FF5F00"
         >
           <div className="px-3 pb-3">
@@ -393,7 +397,7 @@ export function PatternEditor({
             </div>
 
             {samplerPads.filter(p => padLoadStatus[p.id] === 'loaded').length === 0 ? (
-              <p className="text-[9px] text-[#444] tracking-widest py-2">
+              <p className="text-[13px] text-[#444] tracking-widest py-2">
                 No samples loaded — add samples in the Sampler tab
               </p>
             ) : (
@@ -408,7 +412,7 @@ export function PatternEditor({
                           <div className="w-7 flex-shrink-0 flex items-center gap-1">
                             <div className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: pad.color }} />
                             <span
-                              className="text-[9px] font-bold truncate"
+                              className="text-[13px] font-bold truncate"
                               style={{ color: pad.color }}
                               title={pad.label}
                             >
@@ -449,9 +453,11 @@ export function PatternEditor({
 
       {/* ── BASS SECTION ───────────────────────────────────────────────────── */}
       <InstrumentPanel
+        id="bass"
         title="Bass Synthesizer"
         poweredOn={bassPoweredOn}
         onTogglePower={() => onToggleBassPower?.()}
+        defaultExpanded={false}
         color="#F59E0B"
       >
         <div className="px-3 pb-3">
@@ -461,7 +467,7 @@ export function PatternEditor({
               <div className="flex items-center gap-1 border-r border-[#242428] pr-3">
                 {Object.keys(BASS_PRESETS).map(name => (
                   <button key={name} onClick={() => onApplyBassPreset?.(BASS_PRESETS[name], name)}
-                    className="px-2 py-1 text-[9px] font-bold rounded transition-colors uppercase tracking-widest"
+                    className="px-2 py-1 text-[13px] font-bold rounded transition-colors uppercase tracking-widest"
                     style={bassPreset === name
                       ? { background: '#F59E0B', color: '#000' }
                       : { background: '#1a1a1e', color: '#8A8A94', border: '1px solid #242428' }}>
@@ -471,21 +477,21 @@ export function PatternEditor({
               </div>
               <button
                 onClick={() => onUpdateBassParam('waveform', bp.waveform === 'sawtooth' ? 'square' : 'sawtooth')}
-                className="px-3 py-1 bg-[#1a1a1e] border border-[#242428] hover:border-[#F59E0B] rounded text-[10px] font-bold transition-colors tracking-widest"
+                className="px-3 py-1 bg-[#1a1a1e] border border-[#242428] hover:border-[#F59E0B] rounded text-[15px] font-bold transition-colors tracking-widest"
                 style={{ color: '#F59E0B' }}>
                 {bp.waveform === 'sawtooth' ? 'SAW' : 'SQR'}
               </button>
               <div className="flex gap-3">
                 {[{ label: 'Cutoff', key: 'cutoff' }, { label: 'Res', key: 'resonance' }, { label: 'Env', key: 'envMod' }, { label: 'Dcy', key: 'decay' }].map(({ label, key }) => (
                   <div key={key} className="flex flex-col items-center gap-1 w-10">
-                    <span className="text-[9px] text-[#8A8A94] uppercase tracking-widest">{label}</span>
+                    <span className="text-[13px] text-[#8A8A94] uppercase tracking-widest">{label}</span>
                     <input type="range" min="0" max="1" step="0.01" value={(bp as any)[key]} onChange={e => onUpdateBassParam(key, parseFloat(e.target.value))} className="w-full h-1 bg-[#1a1a1e] rounded-lg cursor-pointer" style={{ accentColor: '#F59E0B' }} />
                   </div>
                 ))}
               </div>
               <div className="flex items-center gap-1 ml-2 pl-3 border-l border-[#242428]">
                 <button onClick={() => onUpdateBassParam('octave', Math.max(0, (bp.octave ?? 2) - 1))} className="w-6 h-6 flex items-center justify-center bg-[#1a1a1e] border border-[#242428] hover:border-[#F59E0B] rounded text-xs font-bold text-[#8A8A94] transition-colors">−</button>
-                <span className="text-[9px] font-bold min-w-4 text-center" style={{ color: '#F59E0B' }}>{bp.octave ?? 2}</span>
+                <span className="text-[13px] font-bold min-w-4 text-center" style={{ color: '#F59E0B' }}>{bp.octave ?? 2}</span>
                 <button onClick={() => onUpdateBassParam('octave', Math.min(8, (bp.octave ?? 2) + 1))} className="w-6 h-6 flex items-center justify-center bg-[#1a1a1e] border border-[#242428] hover:border-[#F59E0B] rounded text-xs font-bold text-[#8A8A94] transition-colors">+</button>
               </div>
             </div>
@@ -495,7 +501,7 @@ export function PatternEditor({
             <div className={`flex flex-col gap-0.5 ${GRID_MIN_W}`}>
               {BASS_NOTES.map((note) => (
                 <div key={note} className="flex items-center gap-2">
-                  <div className="w-7 flex-shrink-0 text-[9px] font-bold text-[#8A8A94] text-right pr-1">{note}</div>
+                  <div className="w-7 flex-shrink-0 text-[13px] font-bold text-[#8A8A94] text-right pr-1">{note}</div>
                   <div className="flex-1 grid grid-cols-16 gap-1">
                     {pattern.bass.map((step: any, i: number) => {
                       const fullNote    = `${note}${bp.octave ?? 2}`;
@@ -527,9 +533,11 @@ export function PatternEditor({
 
       {/* ── ATMOSPHERIC PAD ────────────────────────────────────────────────── */}
       <InstrumentPanel
+        id="pad"
         title="Atmospheric Pad"
         poweredOn={synthPoweredOn}
         onTogglePower={() => onToggleSynthPower?.()}
+        defaultExpanded={false}
         color="#8B5CF6"
       >
         <div className="px-3 pb-3">
@@ -539,7 +547,7 @@ export function PatternEditor({
               <div className="flex items-center gap-1 border-r border-[#242428] pr-3">
                 {Object.keys(SYNTH_PRESETS).map(name => (
                   <button key={name} onClick={() => onApplySynthPreset?.(SYNTH_PRESETS[name], name)}
-                    className="px-2 py-1 text-[9px] font-bold rounded transition-colors uppercase tracking-widest"
+                    className="px-2 py-1 text-[13px] font-bold rounded transition-colors uppercase tracking-widest"
                     style={synthPreset === name
                       ? { background: '#8b5cf6', color: '#fff' }
                       : { background: '#1a1a1e', color: '#8A8A94', border: '1px solid #242428' }}>
@@ -550,14 +558,14 @@ export function PatternEditor({
               <div className="flex gap-3">
                 {[{ label: 'Atk', key: 'attack' }, { label: 'Rel', key: 'release' }, { label: 'Cutoff', key: 'cutoff' }, { label: 'Detune', key: 'detune' }].map(({ label, key }) => (
                   <div key={key} className="flex flex-col items-center gap-1 w-10">
-                    <span className="text-[9px] text-[#8A8A94] uppercase tracking-widest">{label}</span>
+                    <span className="text-[13px] text-[#8A8A94] uppercase tracking-widest">{label}</span>
                     <input type="range" min="0" max="1" step="0.01" value={(sp as any)[key]} onChange={e => onUpdateSynthParam(key, parseFloat(e.target.value))} className="w-full h-1 bg-[#1a1a1e] rounded-lg cursor-pointer" style={{ accentColor: '#8b5cf6' }} />
                   </div>
                 ))}
               </div>
               <div className="flex items-center gap-1 ml-2 pl-3 border-l border-[#242428]">
                 <button onClick={() => onUpdateSynthParam('octave', Math.max(0, (sp.octave ?? 4) - 1))} className="w-6 h-6 flex items-center justify-center bg-[#1a1a1e] border border-[#242428] hover:border-[#8b5cf6] rounded text-xs font-bold text-[#8A8A94] transition-colors">−</button>
-                <span className="text-[9px] font-bold text-[#8b5cf6] min-w-4 text-center">{sp.octave ?? 4}</span>
+                <span className="text-[13px] font-bold text-[#8b5cf6] min-w-4 text-center">{sp.octave ?? 4}</span>
                 <button onClick={() => onUpdateSynthParam('octave', Math.min(8, (sp.octave ?? 4) + 1))} className="w-6 h-6 flex items-center justify-center bg-[#1a1a1e] border border-[#242428] hover:border-[#8b5cf6] rounded text-xs font-bold text-[#8A8A94] transition-colors">+</button>
               </div>
             </div>
@@ -567,7 +575,7 @@ export function PatternEditor({
             <div className={`flex flex-col gap-0.5 ${GRID_MIN_W}`}>
               {SYNTH_NOTES.map((note) => (
                 <div key={note} className="flex items-center gap-2">
-                  <div className="w-7 flex-shrink-0 text-[9px] font-bold text-[#8A8A94] text-right pr-1">{note}</div>
+                  <div className="w-7 flex-shrink-0 text-[13px] font-bold text-[#8A8A94] text-right pr-1">{note}</div>
                   <div className="flex-1 grid grid-cols-16 gap-1">
                     {(pattern.synth || Array(16).fill({ active: false, note: '' })).map((step: any, i: number) => {
                       const fullNote    = `${note}${sp.octave ?? 4}`;
@@ -615,9 +623,11 @@ export function PatternEditor({
 
       {/* ── LEAD SYNTH SECTION ─────────────────────────────────────────────── */}
       <InstrumentPanel
+        id="lead"
         title="Lead Synthesizer"
         poweredOn={leadPoweredOn}
         onTogglePower={() => onToggleLeadPower?.()}
+        defaultExpanded={false}
         color="#EF4444"
       >
         <div className="px-3 pb-3">
@@ -627,7 +637,7 @@ export function PatternEditor({
               <div className="flex items-center gap-1 border-r border-[#242428] pr-3">
                 {Object.keys(LEAD_PRESETS).map(name => (
                   <button key={name} onClick={() => onApplyLeadPreset?.(LEAD_PRESETS[name], name)}
-                    className="px-2 py-1 text-[9px] font-bold rounded transition-colors uppercase tracking-widest"
+                    className="px-2 py-1 text-[13px] font-bold rounded transition-colors uppercase tracking-widest"
                     style={leadPreset === name
                       ? { background: '#EF4444', color: '#fff' }
                       : { background: '#1a1a1e', color: '#8A8A94', border: '1px solid #242428' }}>
@@ -637,21 +647,21 @@ export function PatternEditor({
               </div>
               <button
                 onClick={() => onUpdateLeadParam?.('waveform', lp.waveform === 'sawtooth' ? 'square' : 'sawtooth')}
-                className="px-3 py-1 bg-[#1a1a1e] border border-[#242428] hover:border-[#EF4444] rounded text-[10px] font-bold transition-colors tracking-widest"
+                className="px-3 py-1 bg-[#1a1a1e] border border-[#242428] hover:border-[#EF4444] rounded text-[15px] font-bold transition-colors tracking-widest"
                 style={{ color: '#EF4444' }}>
                 {lp.waveform === 'sawtooth' ? 'SAW' : 'SQR'}
               </button>
               <div className="flex gap-3">
                 {[{ label: 'Cutoff', key: 'cutoff' }, { label: 'Res', key: 'resonance' }, { label: 'Atk', key: 'attack' }, { label: 'Dcy', key: 'decay' }, { label: 'Port', key: 'portamento' }].map(({ label, key }) => (
                   <div key={key} className="flex flex-col items-center gap-1 w-10">
-                    <span className="text-[9px] text-[#8A8A94] uppercase tracking-widest">{label}</span>
+                    <span className="text-[13px] text-[#8A8A94] uppercase tracking-widest">{label}</span>
                     <input type="range" min="0" max="1" step="0.01" value={(lp as any)[key]} onChange={e => onUpdateLeadParam?.(key, parseFloat(e.target.value))} className="w-full h-1 bg-[#1a1a1e] rounded-lg cursor-pointer" style={{ accentColor: '#EF4444' }} />
                   </div>
                 ))}
               </div>
               <div className="flex items-center gap-1 ml-2 pl-3 border-l border-[#242428]">
                 <button onClick={() => onUpdateLeadParam?.('octave', Math.max(0, (lp.octave ?? 4) - 1))} className="w-6 h-6 flex items-center justify-center bg-[#1a1a1e] border border-[#242428] hover:border-[#EF4444] rounded text-xs font-bold text-[#8A8A94] transition-colors">−</button>
-                <span className="text-[9px] font-bold min-w-4 text-center" style={{ color: '#EF4444' }}>{lp.octave ?? 4}</span>
+                <span className="text-[13px] font-bold min-w-4 text-center" style={{ color: '#EF4444' }}>{lp.octave ?? 4}</span>
                 <button onClick={() => onUpdateLeadParam?.('octave', Math.min(8, (lp.octave ?? 4) + 1))} className="w-6 h-6 flex items-center justify-center bg-[#1a1a1e] border border-[#242428] hover:border-[#EF4444] rounded text-xs font-bold text-[#8A8A94] transition-colors">+</button>
               </div>
             </div>
@@ -660,7 +670,7 @@ export function PatternEditor({
             <div className={`flex flex-col gap-0.5 ${GRID_MIN_W}`}>
               {SYNTH_NOTES.map((note) => (
                 <div key={note} className="flex items-center gap-2">
-                  <div className="w-7 flex-shrink-0 text-[9px] font-bold text-[#8A8A94] text-right pr-1">{note}</div>
+                  <div className="w-7 flex-shrink-0 text-[13px] font-bold text-[#8A8A94] text-right pr-1">{note}</div>
                   <div className="flex-1 grid grid-cols-16 gap-1">
                     {(pattern.lead || Array(16).fill({ active: false, note: '' })).map((step: any, i: number) => {
                       const fullNote    = `${note}${lp.octave ?? 4}`;
@@ -692,9 +702,11 @@ export function PatternEditor({
 
       {/* ── FM SYNTH SECTION ───────────────────────────────────────────────── */}
       <InstrumentPanel
+        id="fm"
         title="FM Synthesizer"
         poweredOn={fmPoweredOn}
         onTogglePower={() => onToggleFMPower?.()}
+        defaultExpanded={false}
         color="#10B981"
       >
         <div className="px-3 pb-3">
@@ -704,7 +716,7 @@ export function PatternEditor({
               <div className="flex items-center gap-1 border-r border-[#242428] pr-3">
                 {Object.keys(FM_PRESETS).map(name => (
                   <button key={name} onClick={() => onApplyFMPreset?.(FM_PRESETS[name], name)}
-                    className="px-2 py-1 text-[9px] font-bold rounded transition-colors uppercase tracking-widest"
+                    className="px-2 py-1 text-[13px] font-bold rounded transition-colors uppercase tracking-widest"
                     style={fmPreset === name
                       ? { background: '#10B981', color: '#fff' }
                       : { background: '#1a1a1e', color: '#8A8A94', border: '1px solid #242428' }}>
@@ -715,14 +727,14 @@ export function PatternEditor({
               <div className="flex gap-3">
                 {[{ label: 'Ratio', key: 'ratio' }, { label: 'Mod', key: 'modIndex' }, { label: 'Atk', key: 'attack' }, { label: 'Dcy', key: 'decay' }, { label: 'FB', key: 'feedback' }].map(({ label, key }) => (
                   <div key={key} className="flex flex-col items-center gap-1 w-10">
-                    <span className="text-[9px] text-[#8A8A94] uppercase tracking-widest">{label}</span>
+                    <span className="text-[13px] text-[#8A8A94] uppercase tracking-widest">{label}</span>
                     <input type="range" min="0" max="1" step="0.01" value={(fp as any)[key]} onChange={e => onUpdateFMParam?.(key, parseFloat(e.target.value))} className="w-full h-1 bg-[#1a1a1e] rounded-lg cursor-pointer" style={{ accentColor: '#10B981' }} />
                   </div>
                 ))}
               </div>
               <div className="flex items-center gap-1 ml-2 pl-3 border-l border-[#242428]">
                 <button onClick={() => onUpdateFMParam?.('octave', Math.max(0, (fp.octave ?? 5) - 1))} className="w-6 h-6 flex items-center justify-center bg-[#1a1a1e] border border-[#242428] hover:border-[#10B981] rounded text-xs font-bold text-[#8A8A94] transition-colors">−</button>
-                <span className="text-[9px] font-bold min-w-4 text-center" style={{ color: '#10B981' }}>{fp.octave ?? 5}</span>
+                <span className="text-[13px] font-bold min-w-4 text-center" style={{ color: '#10B981' }}>{fp.octave ?? 5}</span>
                 <button onClick={() => onUpdateFMParam?.('octave', Math.min(8, (fp.octave ?? 5) + 1))} className="w-6 h-6 flex items-center justify-center bg-[#1a1a1e] border border-[#242428] hover:border-[#10B981] rounded text-xs font-bold text-[#8A8A94] transition-colors">+</button>
               </div>
             </div>
@@ -731,7 +743,7 @@ export function PatternEditor({
             <div className={`flex flex-col gap-0.5 ${GRID_MIN_W}`}>
               {SYNTH_NOTES.map((note) => (
                 <div key={note} className="flex items-center gap-2">
-                  <div className="w-7 flex-shrink-0 text-[9px] font-bold text-[#8A8A94] text-right pr-1">{note}</div>
+                  <div className="w-7 flex-shrink-0 text-[13px] font-bold text-[#8A8A94] text-right pr-1">{note}</div>
                   <div className="flex-1 grid grid-cols-16 gap-1">
                     {(pattern.fm || Array(16).fill({ active: false, note: '' })).map((step: any, i: number) => {
                       const fullNote    = `${note}${fp.octave ?? 5}`;
@@ -763,9 +775,11 @@ export function PatternEditor({
 
       {/* ── PLUCK SYNTH SECTION ────────────────────────────────────────────── */}
       <InstrumentPanel
+        id="pluck"
         title="Pluck Synthesizer"
         poweredOn={pluckPoweredOn}
         onTogglePower={() => onTogglePluckPower?.()}
+        defaultExpanded={false}
         color="#EC4899"
       >
         <div className="px-3 pb-3">
@@ -775,7 +789,7 @@ export function PatternEditor({
               <div className="flex items-center gap-1 border-r border-[#242428] pr-3">
                 {Object.keys(PLUCK_PRESETS).map(name => (
                   <button key={name} onClick={() => onApplyPluckPreset?.(PLUCK_PRESETS[name], name)}
-                    className="px-2 py-1 text-[9px] font-bold rounded transition-colors uppercase tracking-widest"
+                    className="px-2 py-1 text-[13px] font-bold rounded transition-colors uppercase tracking-widest"
                     style={pluckPreset === name
                       ? { background: '#EC4899', color: '#fff' }
                       : { background: '#1a1a1e', color: '#8A8A94', border: '1px solid #242428' }}>
@@ -786,14 +800,14 @@ export function PatternEditor({
               <div className="flex gap-3">
                 {[{ label: 'Damp', key: 'damping' }, { label: 'Brit', key: 'brightness' }, { label: 'Body', key: 'body' }].map(({ label, key }) => (
                   <div key={key} className="flex flex-col items-center gap-1 w-10">
-                    <span className="text-[9px] text-[#8A8A94] uppercase tracking-widest">{label}</span>
+                    <span className="text-[13px] text-[#8A8A94] uppercase tracking-widest">{label}</span>
                     <input type="range" min="0" max="1" step="0.01" value={(pp as any)[key]} onChange={e => onUpdatePluckParam?.(key, parseFloat(e.target.value))} className="w-full h-1 bg-[#1a1a1e] rounded-lg cursor-pointer" style={{ accentColor: '#EC4899' }} />
                   </div>
                 ))}
               </div>
               <div className="flex items-center gap-1 ml-2 pl-3 border-l border-[#242428]">
                 <button onClick={() => onUpdatePluckParam?.('octave', Math.max(0, (pp.octave ?? 3) - 1))} className="w-6 h-6 flex items-center justify-center bg-[#1a1a1e] border border-[#242428] hover:border-[#EC4899] rounded text-xs font-bold text-[#8A8A94] transition-colors">−</button>
-                <span className="text-[9px] font-bold min-w-4 text-center" style={{ color: '#EC4899' }}>{pp.octave ?? 3}</span>
+                <span className="text-[13px] font-bold min-w-4 text-center" style={{ color: '#EC4899' }}>{pp.octave ?? 3}</span>
                 <button onClick={() => onUpdatePluckParam?.('octave', Math.min(8, (pp.octave ?? 3) + 1))} className="w-6 h-6 flex items-center justify-center bg-[#1a1a1e] border border-[#242428] hover:border-[#EC4899] rounded text-xs font-bold text-[#8A8A94] transition-colors">+</button>
               </div>
             </div>
@@ -810,7 +824,7 @@ export function PatternEditor({
                 const pluckSteps = pattern.pluck || Array(32).fill({ active: false, note: '' });
                 return (
                   <div key={note} className="flex items-center gap-2">
-                    <div className="w-7 flex-shrink-0 text-[9px] font-bold text-right pr-1" style={{ color: '#EC4899' }}>{note}</div>
+                    <div className="w-7 flex-shrink-0 text-[13px] font-bold text-right pr-1" style={{ color: '#EC4899' }}>{note}</div>
                     <div className="flex flex-1 gap-2">
                       {[0, 1].map(bar => (
                         <div key={bar} className="flex-1" style={{ display: 'grid', gridTemplateColumns: 'repeat(16, 1fr)', gap: '2px' }}>
@@ -844,9 +858,11 @@ export function PatternEditor({
 
       {/* ── CHORD STAB SECTION ─────────────────────────────────────────────── */}
       <InstrumentPanel
+        id="stab"
         title="Chord Stab"
         poweredOn={stabPoweredOn}
         onTogglePower={() => onToggleStabPower?.()}
+        defaultExpanded={false}
         color="#6366F1"
       >
         <div className="px-3 pb-3">
@@ -856,7 +872,7 @@ export function PatternEditor({
               <div className="flex items-center gap-1 border-r border-[#242428] pr-3">
                 {Object.keys(STAB_PRESETS).map(name => (
                   <button key={name} onClick={() => onApplyStabPreset?.(STAB_PRESETS[name], name)}
-                    className="px-2 py-1 text-[9px] font-bold rounded transition-colors uppercase tracking-widest"
+                    className="px-2 py-1 text-[13px] font-bold rounded transition-colors uppercase tracking-widest"
                     style={stabPreset === name
                       ? { background: '#6366F1', color: '#fff' }
                       : { background: '#1a1a1e', color: '#8A8A94', border: '1px solid #242428' }}>
@@ -866,21 +882,21 @@ export function PatternEditor({
               </div>
               <button
                 onClick={() => onUpdateStabParam?.('waveform', sbp.waveform === 'sawtooth' ? 'square' : 'sawtooth')}
-                className="px-3 py-1 bg-[#1a1a1e] border border-[#242428] hover:border-[#6366F1] rounded text-[10px] font-bold transition-colors tracking-widest"
+                className="px-3 py-1 bg-[#1a1a1e] border border-[#242428] hover:border-[#6366F1] rounded text-[15px] font-bold transition-colors tracking-widest"
                 style={{ color: '#6366F1' }}>
                 {sbp.waveform === 'sawtooth' ? 'SAW' : 'SQR'}
               </button>
               <div className="flex gap-3">
                 {[{ label: 'Cutoff', key: 'cutoff' }, { label: 'Atk', key: 'attack' }, { label: 'Dcy', key: 'decay' }, { label: 'Sprd', key: 'spread' }].map(({ label, key }) => (
                   <div key={key} className="flex flex-col items-center gap-1 w-10">
-                    <span className="text-[9px] text-[#8A8A94] uppercase tracking-widest">{label}</span>
+                    <span className="text-[13px] text-[#8A8A94] uppercase tracking-widest">{label}</span>
                     <input type="range" min="0" max="1" step="0.01" value={(sbp as any)[key]} onChange={e => onUpdateStabParam?.(key, parseFloat(e.target.value))} className="w-full h-1 bg-[#1a1a1e] rounded-lg cursor-pointer" style={{ accentColor: '#6366F1' }} />
                   </div>
                 ))}
               </div>
               <div className="flex items-center gap-1 ml-2 pl-3 border-l border-[#242428]">
                 <button onClick={() => onUpdateStabParam?.('octave', Math.max(0, (sbp.octave ?? 4) - 1))} className="w-6 h-6 flex items-center justify-center bg-[#1a1a1e] border border-[#242428] hover:border-[#6366F1] rounded text-xs font-bold text-[#8A8A94] transition-colors">−</button>
-                <span className="text-[9px] font-bold min-w-4 text-center" style={{ color: '#6366F1' }}>{sbp.octave ?? 4}</span>
+                <span className="text-[13px] font-bold min-w-4 text-center" style={{ color: '#6366F1' }}>{sbp.octave ?? 4}</span>
                 <button onClick={() => onUpdateStabParam?.('octave', Math.min(8, (sbp.octave ?? 4) + 1))} className="w-6 h-6 flex items-center justify-center bg-[#1a1a1e] border border-[#242428] hover:border-[#6366F1] rounded text-xs font-bold text-[#8A8A94] transition-colors">+</button>
               </div>
             </div>
@@ -889,7 +905,7 @@ export function PatternEditor({
             <div className={`flex flex-col gap-0.5 ${GRID_MIN_W}`}>
               {SYNTH_NOTES.map((note) => (
                 <div key={note} className="flex items-center gap-2">
-                  <div className="w-7 flex-shrink-0 text-[9px] font-bold text-[#8A8A94] text-right pr-1">{note}</div>
+                  <div className="w-7 flex-shrink-0 text-[13px] font-bold text-[#8A8A94] text-right pr-1">{note}</div>
                   <div className="flex-1 grid grid-cols-16 gap-1">
                     {(pattern.stab || Array(16).fill({ active: false, note: '' })).map((step: any, i: number) => {
                       const fullNote    = `${note}${sbp.octave ?? 4}`;

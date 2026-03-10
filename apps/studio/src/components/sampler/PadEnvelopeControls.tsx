@@ -19,7 +19,7 @@ function fmtTime(s: number): string {
 export function PadEnvelopeControls({ envelope, color, onChange }: PadEnvelopeControlsProps) {
   return (
     <div className="flex flex-col gap-2">
-      <span className="text-[9px] font-bold text-[#8A8A94] uppercase tracking-widest">Envelope</span>
+      <span className="text-[13px] font-bold text-[#8A8A94] uppercase tracking-widest">Envelope</span>
       <div className="flex gap-4 justify-around">
         <RotaryKnob
           label="START"
@@ -51,10 +51,10 @@ export function PadEnvelopeControls({ envelope, color, onChange }: PadEnvelopeCo
         />
       </div>
       <div className="flex gap-4 justify-around">
-        <span className="text-[8px] font-mono text-center w-12" style={{ color }}>{fmtPct(envelope.start)}</span>
-        <span className="text-[8px] font-mono text-center w-12" style={{ color }}>{fmtPct(envelope.end)}</span>
-        <span className="text-[8px] font-mono text-center w-12" style={{ color }}>{fmtPct(envelope.length)}</span>
-        <span className="text-[8px] font-mono text-center w-12" style={{ color }}>{fmtTime(envelope.envelope)}</span>
+        <span className="text-[12px] font-mono text-center w-12" style={{ color }}>{fmtPct(envelope.start)}</span>
+        <span className="text-[12px] font-mono text-center w-12" style={{ color }}>{fmtPct(envelope.end)}</span>
+        <span className="text-[12px] font-mono text-center w-12" style={{ color }}>{fmtPct(envelope.length)}</span>
+        <span className="text-[12px] font-mono text-center w-12" style={{ color }}>{fmtTime(envelope.envelope)}</span>
       </div>
     </div>
   );

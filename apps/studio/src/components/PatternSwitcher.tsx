@@ -22,10 +22,10 @@ export const PatternSwitcher: React.FC<PatternSwitcherProps> = ({
   return (
     <div className="p-4 bg-zinc-900 border-t border-zinc-800">
       <div className="flex items-center justify-between mb-2">
-        <span className="text-[10px] uppercase tracking-wider text-zinc-500 font-bold">Patterns</span>
+        <span className="text-[15px] uppercase tracking-wider text-zinc-500 font-bold">Patterns</span>
         <button
           onClick={onAddPattern}
-          className="text-[10px] uppercase tracking-wider text-emerald-500 font-bold hover:text-emerald-400"
+          className="text-[15px] uppercase tracking-wider text-emerald-500 font-bold hover:text-emerald-400"
         >
           + New
         </button>

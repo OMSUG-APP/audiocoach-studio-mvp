@@ -1,7 +1,9 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { ChevronDown, ChevronRight } from 'lucide-react';
+import { useProjectStore } from '../store/useProjectStore';
 
 interface InstrumentPanelProps {
+  id: string;
   title: string;
   poweredOn: boolean;
   onTogglePower: () => void;
@@ -11,6 +13,7 @@ interface InstrumentPanelProps {
 }
 
 export const InstrumentPanel: React.FC<InstrumentPanelProps> = ({
+  id,
   title,
   poweredOn,
   onTogglePower,
@@ -18,7 +21,9 @@ export const InstrumentPanel: React.FC<InstrumentPanelProps> = ({
   color = '#FF5F00',
   children,
 }) => {
-  const [expanded, setExpanded] = useState(defaultExpanded);
+  const collapsed = useProjectStore(s => s.collapsedPanels[id] ?? !defaultExpanded);
+  const setCollapsedPanel = useProjectStore(s => s.setCollapsedPanel);
+  const expanded = !collapsed;
 
   return (
     <div
@@ -29,13 +34,13 @@ export const InstrumentPanel: React.FC<InstrumentPanelProps> = ({
       <div
         className="flex items-center gap-2 px-3 py-2 cursor-pointer select-none"
         style={{ background: '#0d0d0f' }}
-        onClick={() => setExpanded((v) => !v)}
+        onClick={() => setCollapsedPanel(id, !collapsed)}
       >
         <span className="text-[#555]">
           {expanded ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
         </span>
         <span
-          className="text-[10px] font-bold uppercase tracking-[0.2em] flex-1"
+          className="text-[15px] font-bold uppercase tracking-[0.2em] flex-1"
           style={{ color: poweredOn ? color : '#444' }}
         >
           {title}
