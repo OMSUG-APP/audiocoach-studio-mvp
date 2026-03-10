@@ -133,6 +133,7 @@ export default function App() {
         onSelectPattern={store.setActivePatternId}
         onSwitchOrCreatePattern={store.switchOrCreatePattern}
         onRenamePattern={store.renamePattern}
+        onDeletePattern={store.deletePattern}
       />
 
       {/* Tab bar */}

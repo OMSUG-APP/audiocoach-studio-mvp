@@ -18,6 +18,7 @@ interface ProjectStore {
   updateActivePattern: (updater: (p: Pattern) => Pattern) => void;
   switchOrCreatePattern: (slotIndex: number) => void;
   renamePattern: (id: string, name: string) => void;
+  deletePattern: (id: string) => void;
 
   // Instrument handlers
   toggleDrumStep: (inst: DrumInstrument, step: number) => void;
@@ -160,6 +161,16 @@ export const useProjectStore = create<ProjectStore>()(
             patterns: s.project.patterns.map((p) => (p.id === id ? { ...p, name } : p)),
           },
         })),
+
+      deletePattern: (id) => {
+        const { project, activePatternId } = get();
+        if (project.patterns.length <= 1) return; // never delete the last pattern
+        const newPatterns = project.patterns.filter((p) => p.id !== id);
+        const newActiveId = activePatternId === id
+          ? (newPatterns[0]?.id ?? '')
+          : activePatternId;
+        set({ project: { ...project, patterns: newPatterns }, activePatternId: newActiveId });
+      },
 
       toggleDrumStep: (inst, step) =>
         get().updateActivePattern((p) => ({

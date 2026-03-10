@@ -14,6 +14,7 @@ interface TransportBarProps {
   onSelectPattern: (id: string) => void;
   onSwitchOrCreatePattern: (slotIndex: number) => void;
   onRenamePattern: (id: string, name: string) => void;
+  onDeletePattern: (id: string) => void;
 }
 
 export const TransportBar: React.FC<TransportBarProps> = ({
@@ -28,8 +29,10 @@ export const TransportBar: React.FC<TransportBarProps> = ({
   onSelectPattern,
   onSwitchOrCreatePattern,
   onRenamePattern,
+  onDeletePattern,
 }) => {
   const [renamingId, setRenamingId] = useState<string | null>(null);
+  const [hoveredSlot, setHoveredSlot] = useState<number | null>(null);
   const [renameValue, setRenameValue] = useState('');
   const renameInputRef = useRef<HTMLInputElement>(null);
 
@@ -86,47 +89,65 @@ export const TransportBar: React.FC<TransportBarProps> = ({
               const pattern = patterns[i];
               const isActive = pattern?.id === activePatternId;
               const hasData = !!pattern;
+              const isHovered = hoveredSlot === i;
+              const canDelete = hasData && patterns.length > 1;
               return (
-                <button
+                <div
                   key={i}
-                  onClick={() => {
-                    if (pattern) onSelectPattern(pattern.id);
-                    else onSwitchOrCreatePattern(i);
-                  }}
-                  onDoubleClick={() => {
-                    if (pattern) {
-                      setRenamingId(pattern.id);
-                      setRenameValue(pattern.name);
-                    }
-                  }}
-                  title={pattern?.name || `Slot ${i + 1}`}
-                  className="w-7 h-7 rounded text-[13px] font-bold font-mono transition-all flex items-center justify-center relative"
-                  style={
-                    isActive
-                      ? { background: '#1a1a0e', color: '#FF5F00', border: '2px solid #FF5F00', boxShadow: '0 0 8px rgba(255,95,0,0.4)' }
-                      : hasData
-                      ? { background: '#1a1a1e', color: '#8A8A94', border: '1px solid #333' }
-                      : { background: 'transparent', color: '#333', border: '1px solid #1e1e22' }
-                  }
+                  className="relative"
+                  onMouseEnter={() => setHoveredSlot(i)}
+                  onMouseLeave={() => setHoveredSlot(null)}
                 >
-                  {renamingId === pattern?.id ? (
-                    <input
-                      ref={renameInputRef}
-                      value={renameValue}
-                      onChange={(e) => setRenameValue(e.target.value)}
-                      onBlur={commitRename}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter') commitRename();
-                        if (e.key === 'Escape') setRenamingId(null);
-                        e.stopPropagation();
-                      }}
-                      className="absolute inset-0 bg-[#242428] text-[#F0F0F2] text-[12px] text-center rounded border border-[#FF5F00] focus:outline-none w-full px-0.5"
-                      style={{ zIndex: 10 }}
-                    />
-                  ) : (
-                    i + 1
+                  <button
+                    onClick={() => {
+                      if (pattern) onSelectPattern(pattern.id);
+                      else onSwitchOrCreatePattern(i);
+                    }}
+                    onDoubleClick={() => {
+                      if (pattern) {
+                        setRenamingId(pattern.id);
+                        setRenameValue(pattern.name);
+                      }
+                    }}
+                    title={pattern?.name || `Slot ${i + 1}`}
+                    className="w-7 h-7 rounded text-[13px] font-bold font-mono transition-all flex items-center justify-center relative"
+                    style={
+                      isActive
+                        ? { background: '#1a1a0e', color: '#FF5F00', border: '2px solid #FF5F00', boxShadow: '0 0 8px rgba(255,95,0,0.4)' }
+                        : hasData
+                        ? { background: '#1a1a1e', color: '#8A8A94', border: '1px solid #333' }
+                        : { background: 'transparent', color: '#333', border: '1px solid #1e1e22' }
+                    }
+                  >
+                    {renamingId === pattern?.id ? (
+                      <input
+                        ref={renameInputRef}
+                        value={renameValue}
+                        onChange={(e) => setRenameValue(e.target.value)}
+                        onBlur={commitRename}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') commitRename();
+                          if (e.key === 'Escape') setRenamingId(null);
+                          e.stopPropagation();
+                        }}
+                        className="absolute inset-0 bg-[#242428] text-[#F0F0F2] text-[12px] text-center rounded border border-[#FF5F00] focus:outline-none w-full px-0.5"
+                        style={{ zIndex: 10 }}
+                      />
+                    ) : (
+                      i + 1
+                    )}
+                  </button>
+                  {canDelete && isHovered && (
+                    <button
+                      onClick={(e) => { e.stopPropagation(); onDeletePattern(pattern!.id); }}
+                      className="absolute -top-1.5 -right-1.5 w-3.5 h-3.5 rounded-full bg-[#ef4444] text-white flex items-center justify-center text-[9px] font-bold leading-none hover:bg-[#dc2626] transition-colors"
+                      style={{ zIndex: 20 }}
+                      title="Delete pattern"
+                    >
+                      ×
+                    </button>
                   )}
-                </button>
+                </div>
               );
             })}
           </div>
