@@ -123,28 +123,86 @@ export function generateDrumPattern(
 
 // ─── Drum2 generation ────────────────────────────────────────────────────────
 //
-// Maps 8 Elektron Drum 2 tracks to drum machine voice roles, generates 32 steps
-// (2 bars) by repeating the 16-step probability map with variation in bar 2.
+// Each of the 8 Elektron Drum 2 tracks has its own distinct probability map per
+// style — no two tracks share the same pattern fingerprint.
+// Bar 2 (steps 16–31) gets a per-generate random variation scale + per-step
+// perturbation so every Generate press produces a genuinely different result.
 
-const DRUM2_INST_MAP: Record<string, DrumInstrument> = {
-  BD2: 'BD', SD2: 'SD', HH2: 'HC', OH2: 'OH', CL: 'HC', RIM: 'SD', CP: 'SD', CB: 'LT',
+type Drum2TrackName = 'BD2' | 'SD2' | 'HH2' | 'OH2' | 'CL' | 'RIM' | 'CP' | 'CB';
+type Drum2ProbMap   = Record<Drum2TrackName, number[]>;
+
+const DRUM2_PROB_MAPS: Record<DrumStyle, Drum2ProbMap> = {
+  // ── House ─────────────────────────────────────────────────────────────────
+  house: {
+    BD2: [1.0, 0.0, 0.0, 0.15, 1.0, 0.0, 0.0, 0.15, 1.0, 0.0, 0.0, 0.15, 1.0, 0.0, 0.3,  0.1 ],
+    SD2: [0.0, 0.0, 0.0, 0.0,  1.0, 0.0, 0.0, 0.3,  0.0, 0.0, 0.0, 0.0,  1.0, 0.0, 0.35, 0.1 ],
+    HH2: [0.9, 0.5, 0.9, 0.5,  0.9, 0.5, 0.9, 0.5,  0.9, 0.5, 0.9, 0.5,  0.9, 0.5, 0.9,  0.5 ],
+    OH2: [0.0, 0.0, 0.6, 0.0,  0.0, 0.0, 0.6, 0.0,  0.0, 0.0, 0.6, 0.0,  0.0, 0.0, 0.6,  0.0 ],
+    CL:  [0.0, 0.0, 0.0, 0.0,  0.9, 0.0, 0.4, 0.0,  0.0, 0.0, 0.0, 0.0,  0.9, 0.0, 0.4,  0.0 ],
+    RIM: [0.0, 0.3, 0.0, 0.0,  0.0, 0.3, 0.0, 0.3,  0.0, 0.3, 0.0, 0.0,  0.0, 0.3, 0.0,  0.3 ],
+    CP:  [0.0, 0.0, 0.0, 0.0,  0.0, 0.0, 0.0, 0.6,  0.0, 0.0, 0.0, 0.0,  0.0, 0.0, 0.0,  0.6 ],
+    CB:  [0.0, 0.0, 0.0, 0.0,  0.0, 0.0, 0.0, 0.0,  0.7, 0.0, 0.0, 0.0,  0.0, 0.0, 0.0,  0.0 ],
+  },
+
+  // ── Hip-hop ───────────────────────────────────────────────────────────────
+  hiphop: {
+    BD2: [1.0, 0.0, 0.0, 0.3,  0.0, 0.0, 0.7, 0.0,  0.0, 0.75, 0.5, 0.0, 0.0, 0.4,  0.3,  0.0 ],
+    SD2: [0.0, 0.0, 0.0, 0.0,  1.0, 0.0, 0.0, 0.0,  0.0, 0.0,  0.0, 0.0, 1.0, 0.0,  0.0,  0.0 ],
+    HH2: [0.9, 0.0, 0.65,0.3,  0.8, 0.0, 0.65,0.3,  0.8, 0.0,  0.65,0.3, 0.8, 0.0,  0.65, 0.3 ],
+    OH2: [0.0, 0.0, 0.0, 0.0,  0.0, 0.0, 0.5, 0.0,  0.0, 0.0,  0.0, 0.0, 0.0, 0.0,  0.5,  0.0 ],
+    CL:  [0.0, 0.0, 0.0, 0.0,  0.8, 0.0, 0.0, 0.4,  0.0, 0.0,  0.0, 0.0, 0.8, 0.0,  0.0,  0.4 ],
+    RIM: [0.0, 0.0, 0.3, 0.0,  0.0, 0.35,0.0, 0.0,  0.3, 0.0,  0.0, 0.35,0.0, 0.0,  0.3,  0.0 ],
+    CP:  [0.0, 0.0, 0.0, 0.0,  0.0, 0.0, 0.0, 0.0,  0.5, 0.0,  0.0, 0.0, 0.0, 0.0,  0.0,  0.0 ],
+    CB:  [0.0, 0.0, 0.0, 0.4,  0.0, 0.0, 0.0, 0.0,  0.0, 0.4,  0.0, 0.0, 0.0, 0.0,  0.0,  0.0 ],
+  },
+
+  // ── Techno ────────────────────────────────────────────────────────────────
+  techno: {
+    BD2: [1.0, 0.0, 0.0, 0.0,  1.0, 0.0, 0.0, 0.4,  1.0, 0.0, 0.0, 0.0,  1.0, 0.0, 0.7,  0.0 ],
+    SD2: [0.0, 0.0, 0.0, 0.0,  0.9, 0.0, 0.0, 0.0,  0.3, 0.0, 0.0, 0.0,  0.9, 0.0, 0.0,  0.4 ],
+    HH2: [1.0, 0.8, 1.0, 0.8,  1.0, 0.8, 1.0, 0.8,  1.0, 0.8, 1.0, 0.8,  1.0, 0.8, 1.0,  0.8 ],
+    OH2: [0.0, 0.0, 0.7, 0.0,  0.0, 0.0, 0.7, 0.0,  0.0, 0.0, 0.7, 0.0,  0.0, 0.0, 0.7,  0.0 ],
+    CL:  [0.0, 0.0, 0.0, 0.0,  1.0, 0.0, 0.0, 0.0,  0.0, 0.0, 0.0, 0.0,  1.0, 0.0, 0.0,  0.0 ],
+    RIM: [0.0, 0.0, 0.4, 0.0,  0.0, 0.4, 0.0, 0.0,  0.0, 0.0, 0.4, 0.0,  0.0, 0.4, 0.0,  0.0 ],
+    CP:  [0.0, 0.0, 0.0, 0.0,  0.0, 0.0, 0.0, 0.6,  0.0, 0.0, 0.0, 0.0,  0.0, 0.0, 0.0,  0.6 ],
+    CB:  [0.0, 0.0, 0.0, 0.0,  0.0, 0.0, 0.0, 0.0,  0.8, 0.0, 0.0, 0.0,  0.0, 0.0, 0.0,  0.0 ],
+  },
+
+  // ── D&B ───────────────────────────────────────────────────────────────────
+  dnb: {
+    BD2: [1.0, 0.0, 0.3, 0.6,  0.0, 0.0, 0.3, 0.0,  0.0, 1.0, 0.0, 0.6,  0.3, 0.0, 0.0,  0.0 ],
+    SD2: [0.0, 0.0, 0.0, 0.0,  1.0, 0.0, 0.4, 0.0,  0.0, 0.0, 0.6, 0.0,  1.0, 0.0, 0.5,  0.3 ],
+    HH2: [1.0, 0.8, 1.0, 0.8,  1.0, 0.8, 1.0, 0.8,  1.0, 0.8, 1.0, 0.8,  1.0, 0.8, 1.0,  0.8 ],
+    OH2: [0.0, 0.0, 0.0, 0.0,  0.5, 0.0, 0.7, 0.0,  0.0, 0.0, 0.0, 0.0,  0.5, 0.0, 0.7,  0.0 ],
+    CL:  [0.0, 0.0, 0.0, 0.0,  0.9, 0.0, 0.0, 0.0,  0.0, 0.0, 0.5, 0.0,  0.9, 0.0, 0.0,  0.0 ],
+    RIM: [0.0, 0.0, 0.4, 0.0,  0.0, 0.0, 0.0, 0.4,  0.3, 0.0, 0.0, 0.4,  0.0, 0.0, 0.0,  0.0 ],
+    CP:  [0.0, 0.0, 0.0, 0.4,  0.0, 0.0, 0.0, 0.0,  0.0, 0.4, 0.0, 0.0,  0.0, 0.0, 0.0,  0.5 ],
+    CB:  [0.0, 0.0, 0.0, 0.0,  0.0, 0.5, 0.0, 0.0,  0.0, 0.0, 0.0, 0.0,  0.0, 0.5, 0.0,  0.0 ],
+  },
 };
-const DRUM2_VARIATION_TRACKS = ['CL', 'RIM', 'CP', 'CB'];
+
+// Anchor tracks keep a consistent groove between bars; variation tracks get
+// a freshly-rolled scale + per-step perturbation on every Generate press.
+const DRUM2_ANCHOR_TRACKS: Drum2TrackName[] = ['BD2', 'SD2', 'HH2', 'OH2'];
 
 export function generateDrum2Pattern(style: DrumStyle, density: Density): Drum2Track[] {
-  const trackNames = ['BD2', 'SD2', 'HH2', 'OH2', 'CL', 'RIM', 'CP', 'CB'];
-  const probMap    = DRUM_PROB_MAPS[style];
-  const threshold  = DENSITY_THRESHOLD[density];
+  const trackNames: Drum2TrackName[] = ['BD2', 'SD2', 'HH2', 'OH2', 'CL', 'RIM', 'CP', 'CB'];
+  const probMap   = DRUM2_PROB_MAPS[style];
+  const threshold = DENSITY_THRESHOLD[density];
 
   return trackNames.map(name => {
-    const inst  = DRUM2_INST_MAP[name];
-    const probs = probMap[inst];
+    const probs    = probMap[name];
+    const isAnchor = DRUM2_ANCHOR_TRACKS.includes(name);
+    // Roll a fresh bar-2 scale for every Generate press
+    const bar2scale = isAnchor ? 0.85 + r() * 0.15 : 0.45 + r() * 0.5;
+
     const steps = Array.from({ length: 32 }, (_, i) => {
-      const prob      = probs[i % 16];
-      const varFactor = DRUM2_VARIATION_TRACKS.includes(name) && i >= 16 ? 0.65 : 1.0;
-      const adjProb   = prob * varFactor;
-      const active    = adjProb >= threshold ? true : adjProb > 0 && r() < adjProb / threshold;
-      return { active, velocity: active ? humanVel(0.72 + prob * 0.22) : 0.8 };
+      const bar2   = i >= 16;
+      const base   = probs[i % 16];
+      // Bar 2: scale + small random nudge per step for genuine variation
+      const adjProb = bar2 ? Math.max(0, base * bar2scale + (r() - 0.5) * 0.18) : base;
+      const active  = adjProb >= threshold ? true : adjProb > 0 && r() < adjProb / threshold;
+      return { active, velocity: active ? humanVel(0.72 + base * 0.22) : 0.8 };
     });
     return { name, steps };
   });

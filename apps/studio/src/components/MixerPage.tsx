@@ -53,16 +53,18 @@ const FADER_STYLE = `
 
 /* ─── VU Bar — real RMS metering via AnalyserNode ───────────────────────── */
 function VuBar({
-  analyser, color, height = 130,
+  getAnalyser, color, height = 130,
 }: {
-  analyser?: AnalyserNode | null;
+  getAnalyser: () => AnalyserNode | null | undefined;
   color: string;
   height?: number;
 }) {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const rafRef    = useRef<number>(0);
-  const peakRef   = useRef(0);
+  const canvasRef   = useRef<HTMLCanvasElement>(null);
+  const rafRef      = useRef<number>(0);
+  const peakRef     = useRef(0);
   const peakHoldRef = useRef(0);
+  // Keep a reusable data buffer; resize lazily when analyser changes
+  const dataRef     = useRef<Uint8Array>(new Uint8Array(0));
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -72,8 +74,6 @@ function VuBar({
 
     const W = canvas.width;
     const H = canvas.height;
-    const bufferLength = analyser ? analyser.frequencyBinCount : 0;
-    const dataArray    = analyser ? new Uint8Array(bufferLength) : new Uint8Array(0);
 
     const draw = () => {
       rafRef.current = requestAnimationFrame(draw);
@@ -83,27 +83,31 @@ function VuBar({
       ctx2d.fillStyle = '#0A0A0B';
       ctx2d.fillRect(0, 0, W, H);
 
+      // Poll for analyser each frame — picks up lazy-initialised nodes
+      const analyser = getAnalyser();
       let rms = 0;
       if (analyser) {
-        analyser.getByteTimeDomainData(dataArray);
+        const needed = analyser.frequencyBinCount;
+        if (dataRef.current.length !== needed) dataRef.current = new Uint8Array(needed);
+        analyser.getByteTimeDomainData(dataRef.current);
         let sum = 0;
-        for (let i = 0; i < bufferLength; i++) {
-          const v = (dataArray[i] - 128) / 128;
+        for (let i = 0; i < needed; i++) {
+          const v = (dataRef.current[i] - 128) / 128;
           sum += v * v;
         }
-        rms = Math.sqrt(sum / bufferLength);
+        rms = Math.sqrt(sum / needed);
       }
 
       // Smooth peak hold
       if (rms > peakRef.current) {
         peakRef.current = rms;
-        peakHoldRef.current = 60; // frames to hold
+        peakHoldRef.current = 60;
       } else {
         if (peakHoldRef.current > 0) peakHoldRef.current--;
-        else peakRef.current *= 0.97; // slow decay
+        else peakRef.current *= 0.97;
       }
 
-      const fillH = Math.min(rms * 6, 1) * H; // scale RMS to bar height
+      const fillH = Math.min(rms * 6, 1) * H;
       const peakY = H - Math.min(peakRef.current * 6, 1) * H;
 
       // Gradient fill
@@ -131,7 +135,8 @@ function VuBar({
 
     draw();
     return () => cancelAnimationFrame(rafRef.current);
-  }, [analyser, color, height]);
+  // getAnalyser is a stable lambda; color/height are primitive — safe deps
+  }, [color, height]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
     <canvas
@@ -181,10 +186,10 @@ interface ChannelStripProps {
   color: string;
   channel: ChannelMixer;
   onChange: (ch: ChannelMixer) => void;
-  analyser?: AnalyserNode | null;
+  getAnalyser: () => AnalyserNode | null | undefined;
 }
 
-const ChannelStrip: React.FC<ChannelStripProps> = ({ label, color, channel, onChange, analyser }) => {
+const ChannelStrip: React.FC<ChannelStripProps> = ({ label, color, channel, onChange, getAnalyser }) => {
   const ch    = channel || DEFAULT_CHANNEL;
   const eq    = ch.eq    || { low: 0, mid: 0, high: 0 };
   const delay = ch.delay || { time: 0.3, feedback: 0.3, mix: 0 };
@@ -228,7 +233,7 @@ const ChannelStrip: React.FC<ChannelStripProps> = ({ label, color, channel, onCh
             className="mixer-fader"
             style={{ height: 130, width: 10 }}
           />
-          <VuBar analyser={analyser} color={color} height={130} />
+          <VuBar getAnalyser={getAnalyser} color={color} height={130} />
         </div>
         <span className="text-[12px] font-mono mt-1 tabular-nums" style={{ color }}>
           {((ch.volume ?? 0.8) * 100).toFixed(0)}
@@ -240,11 +245,11 @@ const ChannelStrip: React.FC<ChannelStripProps> = ({ label, color, channel, onCh
 
 /* ─── Master strip ───────────────────────────────────────────────────────── */
 function MasterStrip({
-  mixer, onUpdate, analyser,
+  mixer, onUpdate, getAnalyser,
 }: {
   mixer: { volume: number; compressor?: any };
   onUpdate: (v: Partial<{ volume: number; compressor: any }>) => void;
-  analyser?: AnalyserNode | null;
+  getAnalyser: () => AnalyserNode | null | undefined;
 }) {
   const comp = mixer.compressor || { threshold: -12, knee: 6, ratio: 4, attack: 0.003, release: 0.25 };
   return (
@@ -273,7 +278,7 @@ function MasterStrip({
             className="mixer-fader"
             style={{ height: 130, width: 10 }}
           />
-          <VuBar analyser={analyser} color="#FF5F00" height={130} />
+          <VuBar getAnalyser={getAnalyser} color="#FF5F00" height={130} />
         </div>
         <span className="text-[12px] font-mono mt-1 text-[#FF5F00] tabular-nums">
           {(mixer.volume * 100).toFixed(0)}
@@ -325,7 +330,7 @@ export function MixerPage({
                   color={color}
                   channel={ch || DEFAULT_CHANNEL}
                   onChange={updated => store.updateMixerChannel(mixKey as any, updated)}
-                  analyser={analysers?.current?.[mixKey]}
+                  getAnalyser={() => analysers?.current?.[mixKey] ?? null}
                 />
               );
             })}
@@ -335,7 +340,7 @@ export function MixerPage({
             <MasterStrip
               mixer={mixer.master}
               onUpdate={partial => store.updateMixer({ ...mixer, master: { ...mixer.master, ...partial } })}
-              analyser={analysers?.current?.master}
+              getAnalyser={() => analysers?.current?.master ?? null}
             />
           </div>
         </div>
