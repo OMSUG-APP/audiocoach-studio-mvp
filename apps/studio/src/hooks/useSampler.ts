@@ -47,6 +47,9 @@ export interface UseSamplerReturn {
 
   // Analyser (for VU metering in mixer)
   analyser: React.MutableRefObject<AnalyserNode | null>;
+  stereoAnalyserLeft:  React.MutableRefObject<AnalyserNode | null>;
+  stereoAnalyserRight: React.MutableRefObject<AnalyserNode | null>;
+  spectrumAnalyser:    React.MutableRefObject<AnalyserNode | null>;
 
   // Waveform peaks for display (256 values, 0-1 range; null if pad not loaded)
   padWaveforms: (number[] | null)[];
@@ -91,7 +94,10 @@ export function useSampler(mixerChannel?: ChannelMixer): UseSamplerReturn {
   const eqLowRef   = useRef<BiquadFilterNode | null>(null);
   const eqMidRef   = useRef<BiquadFilterNode | null>(null);
   const eqHighRef  = useRef<BiquadFilterNode | null>(null);
-  const analyserRef = useRef<AnalyserNode | null>(null);
+  const analyserRef            = useRef<AnalyserNode | null>(null);
+  const stereoAnalyserLeftRef  = useRef<AnalyserNode | null>(null);
+  const stereoAnalyserRightRef = useRef<AnalyserNode | null>(null);
+  const spectrumAnalyserRef    = useRef<AnalyserNode | null>(null);
 
   // FX buses
   const reverbRef      = useRef<ConvolverNode | null>(null);
@@ -151,6 +157,19 @@ export function useSampler(mixerChannel?: ChannelMixer): UseSamplerReturn {
       eqHigh.connect(analyser);
       analyserRef.current = analyser;
       eqHigh.connect(ctx.destination); // dry path
+
+      // Stereo VU analysers (L/R via ChannelSplitter)
+      const splitter = ctx.createChannelSplitter(2);
+      eqHigh.connect(splitter);
+      const leftAn = ctx.createAnalyser(); leftAn.fftSize = 256; splitter.connect(leftAn, 0);
+      const rightAn = ctx.createAnalyser(); rightAn.fftSize = 256; splitter.connect(rightAn, 1);
+      stereoAnalyserLeftRef.current  = leftAn;
+      stereoAnalyserRightRef.current = rightAn;
+
+      // Spectrum analyser
+      const spectrum = ctx.createAnalyser(); spectrum.fftSize = 2048;
+      eqHigh.connect(spectrum);
+      spectrumAnalyserRef.current = spectrum;
 
       // ── Reverb send ─────────────────────────────────────────────────────
       const reverbSend   = ctx.createGain(); reverbSend.gain.value = 0;
@@ -357,6 +376,9 @@ export function useSampler(mixerChannel?: ChannelMixer): UseSamplerReturn {
     pads, padLoadStatus, activePadId, masterVolume, padWaveforms,
     samplerBuffers: buffersRef.current,
     analyser: analyserRef,
+    stereoAnalyserLeft:  stereoAnalyserLeftRef,
+    stereoAnalyserRight: stereoAnalyserRightRef,
+    spectrumAnalyser:    spectrumAnalyserRef,
     loadPadFile, loadPadBuffer, clearPad, triggerPad, schedulePadAtTime,
     setActivePad: setActivePadId,
     updatePadLabel, updatePadVolume, updatePadPitch,

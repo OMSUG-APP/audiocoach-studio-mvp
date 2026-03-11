@@ -140,11 +140,37 @@ export const useAudioEngine = (
   // Per-drum-layer gains for mute/solo
   const drumLayerGainsRef = useRef<Record<string, GainNode>>({});
 
-  // AnalyserNodes — one per channel for VU metering
+  // AnalyserNodes — one per channel for VU metering (mono, instruments page)
   const analysersRef = useRef<Record<string, AnalyserNode | null>>({
     drums: null, drum2: null, bass: null, synth: null,
     polySynth: null, lead: null, fm: null, pluck: null, stab: null, master: null,
   });
+
+  // Stereo analyser pairs — L/R for mixer VU bars (post-pan)
+  const stereoAnalysersRef = useRef<Record<string, { left: AnalyserNode; right: AnalyserNode } | null>>({
+    drums: null, drum2: null, bass: null, synth: null,
+    polySynth: null, lead: null, fm: null, pluck: null, stab: null, master: null,
+  });
+
+  // Spectrum analysers — high fftSize for frequency display (instruments page + master)
+  const spectrumAnalysersRef = useRef<Record<string, AnalyserNode | null>>({
+    drums: null, drum2: null, bass: null, synth: null,
+    polySynth: null, lead: null, fm: null, pluck: null, stab: null, master: null,
+  });
+
+  // Master limiter (brick-wall after compressor)
+  const masterLimiterRef = useRef<DynamicsCompressorNode | null>(null);
+
+  // Per-channel stereo panners
+  const drumPannerRef      = useRef<StereoPannerNode | null>(null);
+  const bassPannerRef      = useRef<StereoPannerNode | null>(null);
+  const synthPannerRef     = useRef<StereoPannerNode | null>(null);
+  const polySynthPannerRef = useRef<StereoPannerNode | null>(null);
+  const drum2PannerRef     = useRef<StereoPannerNode | null>(null);
+  const leadPannerRef      = useRef<StereoPannerNode | null>(null);
+  const fmPannerRef        = useRef<StereoPannerNode | null>(null);
+  const pluckPannerRef     = useRef<StereoPannerNode | null>(null);
+  const stabPannerRef      = useRef<StereoPannerNode | null>(null);
 
   const scheduleNote = useCallback((step: number, time: number) => {
     if (
@@ -396,6 +422,17 @@ export const useAudioEngine = (
     if (stabGainRef.current)     stabGainRef.current.gain.value     = stabCh.volume   ?? 0.7;
     if (masterGainRef.current)   masterGainRef.current.gain.value   = master.volume   ?? 1.0;
 
+    // Pan
+    if (drumPannerRef.current)      drumPannerRef.current.pan.value      = drums.pan     ?? 0;
+    if (bassPannerRef.current)      bassPannerRef.current.pan.value      = bass.pan      ?? 0;
+    if (synthPannerRef.current)     synthPannerRef.current.pan.value     = synth.pan     ?? 0;
+    if (polySynthPannerRef.current) polySynthPannerRef.current.pan.value = polySynth.pan ?? 0;
+    if (drum2PannerRef.current)     drum2PannerRef.current.pan.value     = drum2Ch.pan   ?? 0;
+    if (leadPannerRef.current)      leadPannerRef.current.pan.value      = leadCh.pan    ?? 0;
+    if (fmPannerRef.current)        fmPannerRef.current.pan.value        = fmCh.pan      ?? 0;
+    if (pluckPannerRef.current)     pluckPannerRef.current.pan.value     = pluckCh.pan   ?? 0;
+    if (stabPannerRef.current)      stabPannerRef.current.pan.value      = stabCh.pan    ?? 0;
+
     if (drumLowRef.current)  drumLowRef.current.gain.value  = drums.eq?.low  ?? 0;
     if (drumMidRef.current)  drumMidRef.current.gain.value  = drums.eq?.mid  ?? 0;
     if (drumHighRef.current) drumHighRef.current.gain.value = drums.eq?.high ?? 0;
@@ -501,11 +538,32 @@ export const useAudioEngine = (
       // ── Master bus ───────────────────────────────────────────
       masterGainRef.current = ctx.createGain();
       masterCompressorRef.current = ctx.createDynamicsCompressor();
+      masterLimiterRef.current = ctx.createDynamicsCompressor();
+      // Brick-wall limiter settings
+      masterLimiterRef.current.threshold.value = -1;
+      masterLimiterRef.current.knee.value      = 0;
+      masterLimiterRef.current.ratio.value     = 20;
+      masterLimiterRef.current.attack.value    = 0.001;
+      masterLimiterRef.current.release.value   = 0.05;
 
       masterGainRef.current.connect(masterCompressorRef.current);
-      masterCompressorRef.current.connect(ctx.destination);
+      masterCompressorRef.current.connect(masterLimiterRef.current);
+      masterLimiterRef.current.connect(ctx.destination);
+
+      // Mono VU analyser (master)
       analysersRef.current.master = ctx.createAnalyser(); analysersRef.current.master.fftSize = 256;
-      masterCompressorRef.current.connect(analysersRef.current.master);
+      masterLimiterRef.current.connect(analysersRef.current.master);
+
+      // Stereo VU analysers (master L/R)
+      { const sp = ctx.createChannelSplitter(2); masterLimiterRef.current.connect(sp);
+        const mL = ctx.createAnalyser(); mL.fftSize = 256; sp.connect(mL, 0);
+        const mR = ctx.createAnalyser(); mR.fftSize = 256; sp.connect(mR, 1);
+        stereoAnalysersRef.current.master = { left: mL, right: mR }; }
+
+      // Spectrum analyser (master)
+      { const sp = ctx.createAnalyser(); sp.fftSize = 2048;
+        masterLimiterRef.current.connect(sp);
+        spectrumAnalysersRef.current.master = sp; }
 
       // ── Shared Drive bus (send effect) ───────────────────────
       sharedDriveRef.current = ctx.createWaveShaper();
@@ -543,10 +601,21 @@ export const useAudioEngine = (
       drumGainRef.current.connect(drumLowRef.current);
       drumLowRef.current.connect(drumMidRef.current);
       drumMidRef.current.connect(drumHighRef.current);
-      drumHighRef.current.connect(masterGainRef.current); // dry
+      drumPannerRef.current = ctx.createStereoPanner();
+      drumHighRef.current.connect(drumPannerRef.current);
+      drumPannerRef.current.connect(masterGainRef.current); // dry (post-pan)
 
+      // Mono VU (pre-pan, used by instruments page)
       analysersRef.current.drums = ctx.createAnalyser(); analysersRef.current.drums.fftSize = 256;
       drumHighRef.current.connect(analysersRef.current.drums);
+      // Stereo VU (post-pan, used by mixer)
+      { const sp = ctx.createChannelSplitter(2); drumPannerRef.current.connect(sp);
+        const L = ctx.createAnalyser(); L.fftSize = 256; sp.connect(L, 0);
+        const R = ctx.createAnalyser(); R.fftSize = 256; sp.connect(R, 1);
+        stereoAnalysersRef.current.drums = { left: L, right: R }; }
+      // Spectrum analyser
+      { const sa = ctx.createAnalyser(); sa.fftSize = 2048;
+        drumHighRef.current.connect(sa); spectrumAnalysersRef.current.drums = sa; }
       drumReverbSendRef.current = ctx.createGain(); drumReverbSendRef.current.gain.value = 0;
       drumDelaySendRef.current = ctx.createGain(); drumDelaySendRef.current.gain.value = 0;
       drumDriveSendRef.current = ctx.createGain(); drumDriveSendRef.current.gain.value = 0;
@@ -565,10 +634,18 @@ export const useAudioEngine = (
       bassGainRef.current.connect(bassLowRef.current);
       bassLowRef.current.connect(bassMidRef.current);
       bassMidRef.current.connect(bassHighRef.current);
-      bassHighRef.current.connect(masterGainRef.current);
+      bassPannerRef.current = ctx.createStereoPanner();
+      bassHighRef.current.connect(bassPannerRef.current);
+      bassPannerRef.current.connect(masterGainRef.current);
 
       analysersRef.current.bass = ctx.createAnalyser(); analysersRef.current.bass.fftSize = 256;
       bassHighRef.current.connect(analysersRef.current.bass);
+      { const sp = ctx.createChannelSplitter(2); bassPannerRef.current.connect(sp);
+        const L = ctx.createAnalyser(); L.fftSize = 256; sp.connect(L, 0);
+        const R = ctx.createAnalyser(); R.fftSize = 256; sp.connect(R, 1);
+        stereoAnalysersRef.current.bass = { left: L, right: R }; }
+      { const sa = ctx.createAnalyser(); sa.fftSize = 2048;
+        bassHighRef.current.connect(sa); spectrumAnalysersRef.current.bass = sa; }
       bassReverbSendRef.current = ctx.createGain(); bassReverbSendRef.current.gain.value = 0;
       bassDelaySendRef.current = ctx.createGain(); bassDelaySendRef.current.gain.value = 0;
       bassDriveSendRef.current = ctx.createGain(); bassDriveSendRef.current.gain.value = 0;
@@ -587,10 +664,18 @@ export const useAudioEngine = (
       synthGainRef.current.connect(synthLowRef.current);
       synthLowRef.current.connect(synthMidRef.current);
       synthMidRef.current.connect(synthHighRef.current);
-      synthHighRef.current.connect(masterGainRef.current);
+      synthPannerRef.current = ctx.createStereoPanner();
+      synthHighRef.current.connect(synthPannerRef.current);
+      synthPannerRef.current.connect(masterGainRef.current);
 
       analysersRef.current.synth = ctx.createAnalyser(); analysersRef.current.synth.fftSize = 256;
       synthHighRef.current.connect(analysersRef.current.synth);
+      { const sp = ctx.createChannelSplitter(2); synthPannerRef.current.connect(sp);
+        const L = ctx.createAnalyser(); L.fftSize = 256; sp.connect(L, 0);
+        const R = ctx.createAnalyser(); R.fftSize = 256; sp.connect(R, 1);
+        stereoAnalysersRef.current.synth = { left: L, right: R }; }
+      { const sa = ctx.createAnalyser(); sa.fftSize = 2048;
+        synthHighRef.current.connect(sa); spectrumAnalysersRef.current.synth = sa; }
       synthReverbSendRef.current = ctx.createGain(); synthReverbSendRef.current.gain.value = 0;
       synthDelaySendRef.current = ctx.createGain(); synthDelaySendRef.current.gain.value = 0;
       synthDriveSendRef.current = ctx.createGain(); synthDriveSendRef.current.gain.value = 0;
@@ -609,9 +694,18 @@ export const useAudioEngine = (
       polySynthGainRef.current.connect(polySynthLowRef.current);
       polySynthLowRef.current.connect(polySynthMidRef.current);
       polySynthMidRef.current.connect(polySynthHighRef.current);
-      polySynthHighRef.current.connect(masterGainRef.current);
+      polySynthPannerRef.current = ctx.createStereoPanner();
+      polySynthHighRef.current.connect(polySynthPannerRef.current);
+      polySynthPannerRef.current.connect(masterGainRef.current);
+
       analysersRef.current.polySynth = ctx.createAnalyser(); analysersRef.current.polySynth.fftSize = 256;
       polySynthHighRef.current.connect(analysersRef.current.polySynth);
+      { const sp = ctx.createChannelSplitter(2); polySynthPannerRef.current.connect(sp);
+        const L = ctx.createAnalyser(); L.fftSize = 256; sp.connect(L, 0);
+        const R = ctx.createAnalyser(); R.fftSize = 256; sp.connect(R, 1);
+        stereoAnalysersRef.current.polySynth = { left: L, right: R }; }
+      { const sa = ctx.createAnalyser(); sa.fftSize = 2048;
+        polySynthHighRef.current.connect(sa); spectrumAnalysersRef.current.polySynth = sa; }
       polySynthReverbSendRef.current = ctx.createGain(); polySynthReverbSendRef.current.gain.value = 0.1;
       polySynthDelaySendRef.current = ctx.createGain(); polySynthDelaySendRef.current.gain.value = 0;
       polySynthHighRef.current.connect(polySynthReverbSendRef.current);
@@ -628,9 +722,18 @@ export const useAudioEngine = (
       drum2GainRef.current.connect(drum2LowRef.current);
       drum2LowRef.current.connect(drum2MidRef.current);
       drum2MidRef.current.connect(drum2HighRef.current);
-      drum2HighRef.current.connect(masterGainRef.current);
+      drum2PannerRef.current = ctx.createStereoPanner();
+      drum2HighRef.current.connect(drum2PannerRef.current);
+      drum2PannerRef.current.connect(masterGainRef.current);
+
       analysersRef.current.drum2 = ctx.createAnalyser(); analysersRef.current.drum2.fftSize = 256;
       drum2HighRef.current.connect(analysersRef.current.drum2);
+      { const sp = ctx.createChannelSplitter(2); drum2PannerRef.current.connect(sp);
+        const L = ctx.createAnalyser(); L.fftSize = 256; sp.connect(L, 0);
+        const R = ctx.createAnalyser(); R.fftSize = 256; sp.connect(R, 1);
+        stereoAnalysersRef.current.drum2 = { left: L, right: R }; }
+      { const sa = ctx.createAnalyser(); sa.fftSize = 2048;
+        drum2HighRef.current.connect(sa); spectrumAnalysersRef.current.drum2 = sa; }
       drum2ReverbSendRef.current = ctx.createGain(); drum2ReverbSendRef.current.gain.value = 0;
       drum2DelaySendRef.current = ctx.createGain(); drum2DelaySendRef.current.gain.value = 0;
       drum2HighRef.current.connect(drum2ReverbSendRef.current);
@@ -647,9 +750,18 @@ export const useAudioEngine = (
       leadGainRef.current.connect(leadLowRef.current);
       leadLowRef.current.connect(leadMidRef.current);
       leadMidRef.current.connect(leadHighRef.current);
-      leadHighRef.current.connect(masterGainRef.current);
+      leadPannerRef.current = ctx.createStereoPanner();
+      leadHighRef.current.connect(leadPannerRef.current);
+      leadPannerRef.current.connect(masterGainRef.current);
+
       analysersRef.current.lead = ctx.createAnalyser(); analysersRef.current.lead.fftSize = 256;
       leadHighRef.current.connect(analysersRef.current.lead);
+      { const sp = ctx.createChannelSplitter(2); leadPannerRef.current.connect(sp);
+        const L = ctx.createAnalyser(); L.fftSize = 256; sp.connect(L, 0);
+        const R = ctx.createAnalyser(); R.fftSize = 256; sp.connect(R, 1);
+        stereoAnalysersRef.current.lead = { left: L, right: R }; }
+      { const sa = ctx.createAnalyser(); sa.fftSize = 2048;
+        leadHighRef.current.connect(sa); spectrumAnalysersRef.current.lead = sa; }
       leadReverbSendRef.current = ctx.createGain(); leadReverbSendRef.current.gain.value = 0;
       leadDelaySendRef.current = ctx.createGain(); leadDelaySendRef.current.gain.value = 0;
       leadDriveSendRef.current = ctx.createGain(); leadDriveSendRef.current.gain.value = 0;
@@ -668,9 +780,18 @@ export const useAudioEngine = (
       fmGainRef.current.connect(fmLowRef.current);
       fmLowRef.current.connect(fmMidRef.current);
       fmMidRef.current.connect(fmHighRef.current);
-      fmHighRef.current.connect(masterGainRef.current);
+      fmPannerRef.current = ctx.createStereoPanner();
+      fmHighRef.current.connect(fmPannerRef.current);
+      fmPannerRef.current.connect(masterGainRef.current);
+
       analysersRef.current.fm = ctx.createAnalyser(); analysersRef.current.fm.fftSize = 256;
       fmHighRef.current.connect(analysersRef.current.fm);
+      { const sp = ctx.createChannelSplitter(2); fmPannerRef.current.connect(sp);
+        const L = ctx.createAnalyser(); L.fftSize = 256; sp.connect(L, 0);
+        const R = ctx.createAnalyser(); R.fftSize = 256; sp.connect(R, 1);
+        stereoAnalysersRef.current.fm = { left: L, right: R }; }
+      { const sa = ctx.createAnalyser(); sa.fftSize = 2048;
+        fmHighRef.current.connect(sa); spectrumAnalysersRef.current.fm = sa; }
       fmReverbSendRef.current = ctx.createGain(); fmReverbSendRef.current.gain.value = 0;
       fmDelaySendRef.current = ctx.createGain(); fmDelaySendRef.current.gain.value = 0;
       fmDriveSendRef.current = ctx.createGain(); fmDriveSendRef.current.gain.value = 0;
@@ -689,9 +810,18 @@ export const useAudioEngine = (
       pluckGainRef.current.connect(pluckLowRef.current);
       pluckLowRef.current.connect(pluckMidRef.current);
       pluckMidRef.current.connect(pluckHighRef.current);
-      pluckHighRef.current.connect(masterGainRef.current);
+      pluckPannerRef.current = ctx.createStereoPanner();
+      pluckHighRef.current.connect(pluckPannerRef.current);
+      pluckPannerRef.current.connect(masterGainRef.current);
+
       analysersRef.current.pluck = ctx.createAnalyser(); analysersRef.current.pluck.fftSize = 256;
       pluckHighRef.current.connect(analysersRef.current.pluck);
+      { const sp = ctx.createChannelSplitter(2); pluckPannerRef.current.connect(sp);
+        const L = ctx.createAnalyser(); L.fftSize = 256; sp.connect(L, 0);
+        const R = ctx.createAnalyser(); R.fftSize = 256; sp.connect(R, 1);
+        stereoAnalysersRef.current.pluck = { left: L, right: R }; }
+      { const sa = ctx.createAnalyser(); sa.fftSize = 2048;
+        pluckHighRef.current.connect(sa); spectrumAnalysersRef.current.pluck = sa; }
       pluckReverbSendRef.current = ctx.createGain(); pluckReverbSendRef.current.gain.value = 0;
       pluckDelaySendRef.current = ctx.createGain(); pluckDelaySendRef.current.gain.value = 0;
       pluckDriveSendRef.current = ctx.createGain(); pluckDriveSendRef.current.gain.value = 0;
@@ -710,9 +840,18 @@ export const useAudioEngine = (
       stabGainRef.current.connect(stabLowRef.current);
       stabLowRef.current.connect(stabMidRef.current);
       stabMidRef.current.connect(stabHighRef.current);
-      stabHighRef.current.connect(masterGainRef.current);
+      stabPannerRef.current = ctx.createStereoPanner();
+      stabHighRef.current.connect(stabPannerRef.current);
+      stabPannerRef.current.connect(masterGainRef.current);
+
       analysersRef.current.stab = ctx.createAnalyser(); analysersRef.current.stab.fftSize = 256;
       stabHighRef.current.connect(analysersRef.current.stab);
+      { const sp = ctx.createChannelSplitter(2); stabPannerRef.current.connect(sp);
+        const L = ctx.createAnalyser(); L.fftSize = 256; sp.connect(L, 0);
+        const R = ctx.createAnalyser(); R.fftSize = 256; sp.connect(R, 1);
+        stereoAnalysersRef.current.stab = { left: L, right: R }; }
+      { const sa = ctx.createAnalyser(); sa.fftSize = 2048;
+        stabHighRef.current.connect(sa); spectrumAnalysersRef.current.stab = sa; }
       stabReverbSendRef.current = ctx.createGain(); stabReverbSendRef.current.gain.value = 0;
       stabDelaySendRef.current = ctx.createGain(); stabDelaySendRef.current.gain.value = 0;
       stabDriveSendRef.current = ctx.createGain(); stabDriveSendRef.current.gain.value = 0;
@@ -773,6 +912,17 @@ export const useAudioEngine = (
     if (pluckGainRef.current)     pluckGainRef.current.gain.value     = pluckCh.volume   ?? 0.7;
     if (stabGainRef.current)      stabGainRef.current.gain.value      = stabCh.volume    ?? 0.7;
     if (masterGainRef.current)    masterGainRef.current.gain.value    = master.volume    ?? 1.0;
+
+    // Pan
+    if (drumPannerRef.current)      drumPannerRef.current.pan.value      = drums.pan     ?? 0;
+    if (bassPannerRef.current)      bassPannerRef.current.pan.value      = bass.pan      ?? 0;
+    if (synthPannerRef.current)     synthPannerRef.current.pan.value     = synth.pan     ?? 0;
+    if (polySynthPannerRef.current) polySynthPannerRef.current.pan.value = polySynth.pan ?? 0;
+    if (drum2PannerRef.current)     drum2PannerRef.current.pan.value     = drum2Ch.pan   ?? 0;
+    if (leadPannerRef.current)      leadPannerRef.current.pan.value      = leadCh.pan    ?? 0;
+    if (fmPannerRef.current)        fmPannerRef.current.pan.value        = fmCh.pan      ?? 0;
+    if (pluckPannerRef.current)     pluckPannerRef.current.pan.value     = pluckCh.pan   ?? 0;
+    if (stabPannerRef.current)      stabPannerRef.current.pan.value      = stabCh.pan    ?? 0;
 
     if (drumLowRef.current)  drumLowRef.current.gain.value  = drums.eq?.low  ?? 0;
     if (drumMidRef.current)  drumMidRef.current.gain.value  = drums.eq?.mid  ?? 0;
@@ -872,5 +1022,11 @@ export const useAudioEngine = (
   useEffect(() => { pluckStepRef.current = 0; }, [activePatternId]);
   useEffect(() => { polySynthStepRef.current = 0; }, [activePatternId]);
 
-  return { isPlaying, currentStep, currentDrum2Step, currentPluckStep, currentPolySynthStep, togglePlay, analysers: analysersRef };
+  return {
+    isPlaying, currentStep, currentDrum2Step, currentPluckStep, currentPolySynthStep,
+    togglePlay,
+    analysers: analysersRef,
+    stereoAnalysers: stereoAnalysersRef,
+    spectrumAnalysers: spectrumAnalysersRef,
+  };
 };

@@ -23,14 +23,7 @@ export default function App() {
 
   const activePattern = useActivePattern();
   const sampler = useSampler(project.mixer.sampler);
-  const { isPlaying, currentStep, currentDrum2Step, currentPluckStep, currentPolySynthStep, togglePlay, analysers } = useAudioEngine(project, activePatternId, sampler.schedulePadAtTime);
-
-  // Inject sampler analyser into the shared analysers map
-  useEffect(() => {
-    if (analysers && sampler.analyser.current) {
-      analysers.current.sampler = sampler.analyser.current;
-    }
-  }, [analysers, sampler.analyser]);
+  const { isPlaying, currentStep, currentDrum2Step, currentPluckStep, currentPolySynthStep, togglePlay, analysers, stereoAnalysers, spectrumAnalysers } = useAudioEngine(project, activePatternId, sampler.schedulePadAtTime);
 
   // Spacebar Play/Pause
   useEffect(() => {
@@ -250,11 +243,21 @@ export default function App() {
             </div>
           ) : activeTab === 'instruments' ? (
             <div className="flex-1 overflow-hidden">
-              <InstrumentsPage />
+              <InstrumentsPage
+                stereoAnalysers={stereoAnalysers}
+                spectrumAnalysers={spectrumAnalysers}
+              />
             </div>
           ) : activeTab === 'mixer' ? (
             <div className="flex-1 overflow-hidden">
-              <MixerPage analysers={analysers} />
+              <MixerPage
+                analysers={analysers}
+                stereoAnalysers={stereoAnalysers}
+                samplerAnalyser={sampler.analyser}
+                samplerStereoL={sampler.stereoAnalyserLeft}
+                samplerStereoR={sampler.stereoAnalyserRight}
+                spectrumAnalysers={spectrumAnalysers}
+              />
             </div>
           ) : (
             <div className="flex-1 overflow-hidden">

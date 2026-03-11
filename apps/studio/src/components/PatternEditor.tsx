@@ -821,7 +821,8 @@ export function PatternEditor({
             <div className="flex flex-col gap-0.5">
               {SYNTH_NOTES.map(note => {
                 const fullNote = `${note}${pp.octave ?? 3}`;
-                const pluckSteps = pattern.pluck || Array(32).fill({ active: false, note: '' });
+                const rawPluck = pattern.pluck || [];
+                const pluckSteps = rawPluck.length >= 32 ? rawPluck : [...rawPluck, ...Array(32 - rawPluck.length).fill({ active: false, note: '', velocity: 0.6, length: 4 })];
                 return (
                   <div key={note} className="flex items-center gap-2">
                     <div className="w-7 flex-shrink-0 text-[13px] font-bold text-right pr-1" style={{ color: '#EC4899' }}>{note}</div>

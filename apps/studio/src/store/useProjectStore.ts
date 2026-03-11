@@ -389,14 +389,18 @@ export const useProjectStore = create<ProjectStore>()(
 
       // Pluck Synth implementations
       togglePluckStep: (step, note) =>
-        get().updateActivePattern((p) => ({
-          ...p,
-          pluck: (p.pluck || Array.from({ length: 16 }, () => ({ active: false, note: '', velocity: 0.6, length: 4 }))).map((s, i) => {
-            if (i !== step) return s;
-            const isSameNote = s.note === note;
-            return { ...s, active: isSameNote ? !s.active : true, note };
-          }),
-        })),
+        get().updateActivePattern((p) => {
+          const base = p.pluck || [];
+          const padded = base.length >= 32 ? base : [...base, ...Array.from({ length: 32 - base.length }, () => ({ active: false, note: '', velocity: 0.6, length: 4 }))];
+          return {
+            ...p,
+            pluck: padded.map((s, i) => {
+              if (i !== step) return s;
+              const isSameNote = s.note === note;
+              return { ...s, active: isSameNote ? !s.active : true, note };
+            }),
+          };
+        }),
 
       setPluckSteps: (steps) => get().updateActivePattern((p) => ({ ...p, pluck: steps })),
 

@@ -29,6 +29,7 @@ export interface DrumVoiceParams {
 
 export interface ChannelMixer {
   volume: number;
+  pan?: number;                                       // -1.0 (L) – +1.0 (R), default 0
   eq: { low: number; mid: number; high: number };
   reverb?: number;                                    // send amount 0-1
   delay?: { time: number; feedback: number; mix: number }; // mix = send amount
