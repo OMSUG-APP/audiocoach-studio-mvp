@@ -7,8 +7,6 @@ interface TransportBarProps {
   onTogglePlay: () => void;
   bpm: number;
   onBpmChange: (bpm: number) => void;
-  swing: number;
-  onSwingChange: (swing: number) => void;
   patterns: Pattern[];
   activePatternId: string;
   onSelectPattern: (id: string) => void;
@@ -22,8 +20,6 @@ export const TransportBar: React.FC<TransportBarProps> = ({
   onTogglePlay,
   bpm,
   onBpmChange,
-  swing,
-  onSwingChange,
   patterns,
   activePatternId,
   onSelectPattern,
@@ -153,23 +149,6 @@ export const TransportBar: React.FC<TransportBarProps> = ({
           </div>
         </div>
 
-        <div className="flex items-center gap-8">
-          <div className="flex flex-col items-end">
-            <span className="text-[13px] uppercase tracking-[0.2em] text-[#8A8A94] font-bold">Swing</span>
-            <div className="flex items-center gap-3">
-              <input
-                type="range"
-                min="0"
-                max="100"
-                value={swing}
-                onChange={(e) => onSwingChange(Number(e.target.value))}
-                className="w-24"
-                style={{ accentColor: '#FF5F00' }}
-              />
-              <span className="text-xs font-mono w-8 text-right text-[#F0F0F2]">{swing}%</span>
-            </div>
-          </div>
-        </div>
       </div>
     </div>
   );

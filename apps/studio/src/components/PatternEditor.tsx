@@ -102,6 +102,8 @@ interface PatternEditorProps {
   onSetStabSteps?: (steps: NoteStep[]) => void;
   stabPoweredOn?: boolean;
   onToggleStabPower?: () => void;
+  instrumentOrder?: string[];
+  onReorderInstrument?: (newOrder: string[]) => void;
 }
 
 const BASS_NOTES  = ['B', 'A#', 'A', 'G#', 'G', 'F#', 'F', 'E', 'D#', 'D', 'C#', 'C'];
@@ -153,14 +155,28 @@ export function PatternEditor({
   fmParams, fmPreset, onUpdateFMParam, onApplyFMPreset, onToggleFMStep, onSetFMSteps, fmPoweredOn = true, onToggleFMPower,
   pluckParams, pluckPreset, onUpdatePluckParam, onApplyPluckPreset, onTogglePluckStep, onSetPluckSteps, currentPluckStep = 0, pluckPoweredOn = true, onTogglePluckPower,
   stabParams, stabPreset, onUpdateStabParam, onApplyStabPreset, onToggleStabStep, onSetStabSteps, stabPoweredOn = true, onToggleStabPower,
+  instrumentOrder: instrumentOrderProp,
+  onReorderInstrument,
 }: PatternEditorProps) {
+  const DEFAULT_ORDER = ['drums', 'drum2', 'sampler', 'bass', 'pad', 'polySynth', 'lead', 'fm', 'pluck', 'stab'];
+  const instrumentOrder = instrumentOrderProp ?? DEFAULT_ORDER;
 
-  const bp = bassParams  || { waveform: 'sawtooth', cutoff: 0.5, resonance: 0.2, envMod: 0.5, decay: 0.5 };
-  const sp = synthParams || { attack: 0.5, release: 0.5, cutoff: 0.5, detune: 0.5 };
-  const lp = leadParams  || { waveform: 'sawtooth' as const, octave: 4, cutoff: 0.8, resonance: 0.3, attack: 0.01, decay: 0.3, portamento: 0.0 };
-  const fp = fmParams    || { ratio: 0.5, modIndex: 0.7, attack: 0.01, decay: 0.8, octave: 5, feedback: 0.0 };
-  const pp = pluckParams || { damping: 0.7, brightness: 0.8, body: 0.5, octave: 3 };
-  const sbp = stabParams || { waveform: 'sawtooth' as const, octave: 4, cutoff: 0.7, attack: 0.01, decay: 0.15, spread: 0.3 };
+  const moveInstrument = (key: string, dir: -1 | 1) => {
+    const idx = instrumentOrder.indexOf(key);
+    if (idx === -1) return;
+    const target = idx + dir;
+    if (target < 0 || target >= instrumentOrder.length) return;
+    const newOrder = [...instrumentOrder];
+    [newOrder[idx], newOrder[target]] = [newOrder[target], newOrder[idx]];
+    onReorderInstrument?.(newOrder);
+  };
+
+  const bp  = { waveform: 'sawtooth', cutoff: 0.5, resonance: 0.2, envMod: 0.5, decay: 0.5, ...bassParams };
+  const sp  = { attack: 0.5, release: 0.5, cutoff: 0.5, detune: 0.5, ...synthParams };
+  const lp  = { waveform: 'sawtooth' as const, octave: 4, cutoff: 0.8, resonance: 0.3, attack: 0.01, decay: 0.3, portamento: 0.0, ...leadParams };
+  const fp  = { ratio: 0.5, modIndex: 0.7, attack: 0.01, decay: 0.8, octave: 5, feedback: 0.0, ...fmParams };
+  const pp  = { damping: 0.7, brightness: 0.8, body: 0.5, octave: 3, ...pluckParams };
+  const sbp = { waveform: 'sawtooth' as const, octave: 4, cutoff: 0.7, attack: 0.01, decay: 0.15, spread: 0.3, ...stabParams };
 
   // ── Generator settings (local state — no need to persist) ─────────────────
   const [genKey,     setGenKey]     = useState<MusicalKey>('A');
@@ -254,7 +270,11 @@ export function PatternEditor({
         </div>
       </div>
 
+      {/* ── INSTRUMENT SECTIONS (order controlled by instrumentOrder) ──────── */}
+      <div style={{ display: 'flex', flexDirection: 'column' }}>
+
       {/* ── DRUM MACHINE ───────────────────────────────────────────────────── */}
+      <div style={{ order: instrumentOrder.indexOf('drums') }}>
       <InstrumentPanel
         id="drums"
         title="Drum Machine"
@@ -262,6 +282,10 @@ export function PatternEditor({
         onTogglePower={() => onToggleDrumsPower?.()}
         defaultExpanded={true}
         color="#FF5F00"
+        onMoveUp={() => moveInstrument('drums', -1)}
+        onMoveDown={() => moveInstrument('drums', 1)}
+        isFirst={instrumentOrder.indexOf('drums') === 0}
+        isLast={instrumentOrder.indexOf('drums') === instrumentOrder.length - 1}
       >
         <div className="px-3 pb-3">
           {/* Kit selector */}
@@ -364,10 +388,11 @@ export function PatternEditor({
           </div>
         </div>
       </InstrumentPanel>
+      </div>
 
       {/* ── ELEKTRON DRUM 2 ────────────────────────────────────────────────── */}
       {onToggleDrum2Step && (
-        <div className="mt-3">
+        <div className="mt-3" style={{ order: instrumentOrder.indexOf('drum2') }}>
           <Drum2Row
             tracks={pattern.drum2 || []}
             currentStep={currentStep}
@@ -377,12 +402,16 @@ export function PatternEditor({
             onToggleStep={onToggleDrum2Step}
             onUpdateTrackParam={(idx, param, val) => onUpdateDrum2TrackParam?.(idx, param, val)}
             onGenerate={handleGenerateDrum2}
+            onMoveUp={() => moveInstrument('drum2', -1)}
+            onMoveDown={() => moveInstrument('drum2', 1)}
+            isFirst={instrumentOrder.indexOf('drum2') === 0}
+            isLast={instrumentOrder.indexOf('drum2') === instrumentOrder.length - 1}
           />
         </div>
       )}
 
       {/* ── SAMPLER SECTION ────────────────────────────────────────────────── */}
-      <div className="mt-4">
+      <div className="mt-4" style={{ order: instrumentOrder.indexOf('sampler') }}>
         <InstrumentPanel
           id="sampler"
           title="Sample Pads"
@@ -390,6 +419,10 @@ export function PatternEditor({
           onTogglePower={() => onToggleSamplerPower?.()}
           defaultExpanded={false}
           color="#FF5F00"
+          onMoveUp={() => moveInstrument('sampler', -1)}
+          onMoveDown={() => moveInstrument('sampler', 1)}
+          isFirst={instrumentOrder.indexOf('sampler') === 0}
+          isLast={instrumentOrder.indexOf('sampler') === instrumentOrder.length - 1}
         >
           <div className="px-3 pb-3">
             <div className="flex items-center gap-2 py-2 border-b border-[#242428] mb-3">
@@ -452,6 +485,7 @@ export function PatternEditor({
       </div>
 
       {/* ── BASS SECTION ───────────────────────────────────────────────────── */}
+      <div style={{ order: instrumentOrder.indexOf('bass') }}>
       <InstrumentPanel
         id="bass"
         title="Bass Synthesizer"
@@ -459,6 +493,10 @@ export function PatternEditor({
         onTogglePower={() => onToggleBassPower?.()}
         defaultExpanded={false}
         color="#F59E0B"
+        onMoveUp={() => moveInstrument('bass', -1)}
+        onMoveDown={() => moveInstrument('bass', 1)}
+        isFirst={instrumentOrder.indexOf('bass') === 0}
+        isLast={instrumentOrder.indexOf('bass') === instrumentOrder.length - 1}
       >
         <div className="px-3 pb-3">
           <div className="flex items-center justify-between mb-3 flex-wrap gap-2 pt-2">
@@ -530,8 +568,10 @@ export function PatternEditor({
           </div>
         </div>
       </InstrumentPanel>
+      </div>
 
       {/* ── ATMOSPHERIC PAD ────────────────────────────────────────────────── */}
+      <div style={{ order: instrumentOrder.indexOf('pad') }}>
       <InstrumentPanel
         id="pad"
         title="Atmospheric Pad"
@@ -539,6 +579,10 @@ export function PatternEditor({
         onTogglePower={() => onToggleSynthPower?.()}
         defaultExpanded={false}
         color="#8B5CF6"
+        onMoveUp={() => moveInstrument('pad', -1)}
+        onMoveDown={() => moveInstrument('pad', 1)}
+        isFirst={instrumentOrder.indexOf('pad') === 0}
+        isLast={instrumentOrder.indexOf('pad') === instrumentOrder.length - 1}
       >
         <div className="px-3 pb-3">
           <div className="flex items-center justify-between mb-3 flex-wrap gap-2 pt-2">
@@ -604,10 +648,11 @@ export function PatternEditor({
           </div>
         </div>
       </InstrumentPanel>
+      </div>
 
       {/* ── POLY SYNTH SECTION ─────────────────────────────────────────────── */}
       {polySynthParams && onTogglePolySynthStep && onSetPolySynthChord && onUpdatePolySynthParam && (
-        <div className="mt-3">
+        <div className="mt-3" style={{ order: instrumentOrder.indexOf('polySynth') }}>
           <PolySynthRow
             steps={(() => { const s = pattern.polySynth || []; const pad = Array.from({ length: Math.max(0, 32 - s.length) }, () => ({ active: false, chord: [], velocity: 0.7, length: 4 })); return [...s, ...pad]; })()}
             currentStep={currentPolySynthStep}
@@ -617,11 +662,16 @@ export function PatternEditor({
             onToggleStep={onTogglePolySynthStep}
             onSetChord={onSetPolySynthChord}
             onUpdateParam={onUpdatePolySynthParam}
+            onMoveUp={() => moveInstrument('polySynth', -1)}
+            onMoveDown={() => moveInstrument('polySynth', 1)}
+            isFirst={instrumentOrder.indexOf('polySynth') === 0}
+            isLast={instrumentOrder.indexOf('polySynth') === instrumentOrder.length - 1}
           />
         </div>
       )}
 
       {/* ── LEAD SYNTH SECTION ─────────────────────────────────────────────── */}
+      <div style={{ order: instrumentOrder.indexOf('lead') }}>
       <InstrumentPanel
         id="lead"
         title="Lead Synthesizer"
@@ -629,6 +679,10 @@ export function PatternEditor({
         onTogglePower={() => onToggleLeadPower?.()}
         defaultExpanded={false}
         color="#EF4444"
+        onMoveUp={() => moveInstrument('lead', -1)}
+        onMoveDown={() => moveInstrument('lead', 1)}
+        isFirst={instrumentOrder.indexOf('lead') === 0}
+        isLast={instrumentOrder.indexOf('lead') === instrumentOrder.length - 1}
       >
         <div className="px-3 pb-3">
           <div className="flex items-center justify-between mb-3 flex-wrap gap-2 pt-2">
@@ -699,8 +753,10 @@ export function PatternEditor({
           </div>
         </div>
       </InstrumentPanel>
+      </div>
 
       {/* ── FM SYNTH SECTION ───────────────────────────────────────────────── */}
+      <div style={{ order: instrumentOrder.indexOf('fm') }}>
       <InstrumentPanel
         id="fm"
         title="FM Synthesizer"
@@ -708,6 +764,10 @@ export function PatternEditor({
         onTogglePower={() => onToggleFMPower?.()}
         defaultExpanded={false}
         color="#10B981"
+        onMoveUp={() => moveInstrument('fm', -1)}
+        onMoveDown={() => moveInstrument('fm', 1)}
+        isFirst={instrumentOrder.indexOf('fm') === 0}
+        isLast={instrumentOrder.indexOf('fm') === instrumentOrder.length - 1}
       >
         <div className="px-3 pb-3">
           <div className="flex items-center justify-between mb-3 flex-wrap gap-2 pt-2">
@@ -772,8 +832,10 @@ export function PatternEditor({
           </div>
         </div>
       </InstrumentPanel>
+      </div>
 
       {/* ── PLUCK SYNTH SECTION ────────────────────────────────────────────── */}
+      <div style={{ order: instrumentOrder.indexOf('pluck') }}>
       <InstrumentPanel
         id="pluck"
         title="Pluck Synthesizer"
@@ -781,6 +843,10 @@ export function PatternEditor({
         onTogglePower={() => onTogglePluckPower?.()}
         defaultExpanded={false}
         color="#EC4899"
+        onMoveUp={() => moveInstrument('pluck', -1)}
+        onMoveDown={() => moveInstrument('pluck', 1)}
+        isFirst={instrumentOrder.indexOf('pluck') === 0}
+        isLast={instrumentOrder.indexOf('pluck') === instrumentOrder.length - 1}
       >
         <div className="px-3 pb-3">
           <div className="flex items-center justify-between mb-3 flex-wrap gap-2 pt-2">
@@ -856,8 +922,10 @@ export function PatternEditor({
           </div>
         </div>
       </InstrumentPanel>
+      </div>
 
       {/* ── CHORD STAB SECTION ─────────────────────────────────────────────── */}
+      <div style={{ order: instrumentOrder.indexOf('stab') }}>
       <InstrumentPanel
         id="stab"
         title="Chord Stab"
@@ -865,6 +933,10 @@ export function PatternEditor({
         onTogglePower={() => onToggleStabPower?.()}
         defaultExpanded={false}
         color="#6366F1"
+        onMoveUp={() => moveInstrument('stab', -1)}
+        onMoveDown={() => moveInstrument('stab', 1)}
+        isFirst={instrumentOrder.indexOf('stab') === 0}
+        isLast={instrumentOrder.indexOf('stab') === instrumentOrder.length - 1}
       >
         <div className="px-3 pb-3">
           <div className="flex items-center justify-between mb-3 flex-wrap gap-2 pt-2">
@@ -935,8 +1007,9 @@ export function PatternEditor({
           </div>
         </div>
       </InstrumentPanel>
+      </div>
 
-
+      </div>{/* end instruments reorder container */}
     </div>
   );
 }

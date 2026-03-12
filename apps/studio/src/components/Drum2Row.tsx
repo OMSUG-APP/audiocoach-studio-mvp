@@ -12,6 +12,10 @@ interface Drum2RowProps {
   onToggleStep: (trackIndex: number, step: number) => void;
   onUpdateTrackParam: (trackIndex: number, param: string, value: any) => void;
   onGenerate: () => void;
+  onMoveUp?: () => void;
+  onMoveDown?: () => void;
+  isFirst?: boolean;
+  isLast?: boolean;
 }
 
 const GenBtn = ({ onClick }: { onClick: () => void }) => (
@@ -32,6 +36,10 @@ export const Drum2Row: React.FC<Drum2RowProps> = ({
   onToggleStep,
   onUpdateTrackParam,
   onGenerate,
+  onMoveUp,
+  onMoveDown,
+  isFirst,
+  isLast,
 }) => {
   const BAR_SIZE = 16;
   return (
@@ -42,6 +50,10 @@ export const Drum2Row: React.FC<Drum2RowProps> = ({
       onTogglePower={onTogglePower}
       defaultExpanded={false}
       color="#22D3EE"
+      onMoveUp={onMoveUp}
+      onMoveDown={onMoveDown}
+      isFirst={isFirst}
+      isLast={isLast}
     >
       <div className="px-3 pb-3">
         {/* Header bar with Generate */}

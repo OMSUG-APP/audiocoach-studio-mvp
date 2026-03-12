@@ -1,10 +1,10 @@
 import { Project, Pattern, SamplerPad } from '../types';
-import { createDrumEngine, createBassEngine, createSynthEngine, noteToFreq } from './audio';
+import { createDrumEngine, createBassEngine, createSynthEngine, createLeadSynthEngine, createFMSynthEngine, createPluckEngine, createChordStabEngine, noteToFreq } from './audio';
 import { createPolySynthEngine } from './polySynth';
 import { createDigitaktEngine } from './digitaktEngine';
 import { triggerSamplerPad, resolveGain } from './sampler';
 
-export type ExportMode = 'master' | 'drums' | 'bass' | 'synth' | 'polySynth' | 'drum2';
+export type ExportMode = 'master' | 'drums' | 'bass' | 'synth' | 'polySynth' | 'drum2' | 'lead' | 'fm' | 'pluck' | 'stab';
 
 const createImpulseResponse = (ctx: BaseAudioContext, duration: number, decay: number) => {
   const length = ctx.sampleRate * duration;
@@ -120,7 +120,7 @@ export const renderToWav = async (
   delayNode.connect(delayReturn); delayReturn.connect(masterGain);
 
   // ── Channel strip factory ─────────────────────────────────────────────────
-  type ChannelKey = 'drums' | 'bass' | 'synth' | 'polySynth' | 'drum2' | 'sampler';
+  type ChannelKey = 'drums' | 'bass' | 'synth' | 'polySynth' | 'drum2' | 'sampler' | 'lead' | 'fm' | 'pluck' | 'stab';
   const setupChannel = (key: ChannelKey, stemName: string) => {
     const chMixer = (project.mixer as any)?.[key] || { volume: 0.8, eq: { low: 0, mid: 0, high: 0 } };
     const gain = ctx.createGain();
@@ -151,6 +151,10 @@ export const renderToWav = async (
   const polySynthInput = setupChannel('polySynth', 'polySynth');
   const drum2Input     = setupChannel('drum2',     'drum2');
   const samplerInput   = setupChannel('sampler',   'sampler');
+  const leadInput      = setupChannel('lead',      'lead');
+  const fmInput        = setupChannel('fm',        'fm');
+  const pluckInput     = setupChannel('pluck',     'pluck');
+  const stabInput      = setupChannel('stab',      'stab');
 
   // Create engines once (they hold internal voice state)
   const polySynthEngine = createPolySynthEngine(offlineCtx, polySynthInput);
@@ -234,6 +238,46 @@ export const renderToWav = async (
           if (!pad || resolveGain(pad, samplerPads) === 0) return;
           triggerSamplerPad(offlineCtx, buffer, pad, samplerInput, time);
         });
+      }
+
+      // LEAD SYNTH
+      if (poweredOn?.lead ?? true) {
+        const leadStep = pattern.lead?.[mainStep];
+        if (leadStep?.active && leadStep.note) {
+          const lp = project.leadParams || { waveform: 'sawtooth', octave: 4, cutoff: 0.8, resonance: 0.3, attack: 0.01, decay: 0.3, portamento: 0.0 };
+          const freq = noteToFreq(leadStep.note, (lp.octave ?? 4) - 4);
+          createLeadSynthEngine(ctx, leadInput).playNote(time, freq, stepTime * (leadStep.length || 4), leadStep.velocity || 0.6, lp);
+        }
+      }
+
+      // FM SYNTH
+      if (poweredOn?.fm ?? true) {
+        const fmStep = pattern.fm?.[mainStep];
+        if (fmStep?.active && fmStep.note) {
+          const fp = project.fmParams || { ratio: 0.5, modIndex: 0.7, attack: 0.01, decay: 0.8, octave: 5, feedback: 0.0 };
+          const freq = noteToFreq(fmStep.note, (fp.octave ?? 5) - 4);
+          createFMSynthEngine(ctx, fmInput).playNote(time, freq, stepTime * (fmStep.length || 4), fmStep.velocity || 0.6, fp);
+        }
+      }
+
+      // PLUCK SYNTH
+      if (poweredOn?.pluck ?? true) {
+        const pluckStep = pattern.pluck?.[pos % 32];
+        if (pluckStep?.active && pluckStep.note) {
+          const pp = project.pluckParams || { damping: 0.7, brightness: 0.8, body: 0.5, octave: 3 };
+          const freq = noteToFreq(pluckStep.note, (pp.octave ?? 3) - 3);
+          createPluckEngine(ctx, pluckInput).playNote(time, freq, stepTime * (pluckStep.length || 4), pluckStep.velocity || 0.6, pp);
+        }
+      }
+
+      // CHORD STAB
+      if (poweredOn?.stab ?? true) {
+        const stabStep = pattern.stab?.[mainStep];
+        if (stabStep?.active && stabStep.note) {
+          const sp = project.stabParams || { waveform: 'sawtooth', octave: 4, cutoff: 0.7, attack: 0.01, decay: 0.15, spread: 0.3 };
+          const freq = noteToFreq(stabStep.note, (sp.octave ?? 4) - 4);
+          createChordStabEngine(ctx, stabInput).playNote(time, freq, stepTime * (stabStep.length || 4), stabStep.velocity || 0.6, sp);
+        }
       }
     }
   }

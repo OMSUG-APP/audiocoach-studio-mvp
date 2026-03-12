@@ -91,6 +91,10 @@ interface PolySynthRowProps {
   onToggleStep: (step: number) => void;
   onSetChord: (step: number, chord: string[]) => void;
   onUpdateParam: (param: string, value: any) => void;
+  onMoveUp?: () => void;
+  onMoveDown?: () => void;
+  isFirst?: boolean;
+  isLast?: boolean;
 }
 
 export const PolySynthRow: React.FC<PolySynthRowProps> = ({
@@ -102,6 +106,10 @@ export const PolySynthRow: React.FC<PolySynthRowProps> = ({
   onToggleStep,
   onSetChord,
   onUpdateParam,
+  onMoveUp,
+  onMoveDown,
+  isFirst,
+  isLast,
 }) => {
   const [editingStep, setEditingStep] = useState<number | null>(null);
   const [tempNotes, setTempNotes] = useState<string[]>([]);
@@ -128,6 +136,10 @@ export const PolySynthRow: React.FC<PolySynthRowProps> = ({
       onTogglePower={onTogglePower}
       defaultExpanded={false}
       color="#A855F7"
+      onMoveUp={onMoveUp}
+      onMoveDown={onMoveDown}
+      isFirst={isFirst}
+      isLast={isLast}
     >
       <div className="p-3">
         {/* Step grid — 2 bars of 16, click any step to edit its notes */}

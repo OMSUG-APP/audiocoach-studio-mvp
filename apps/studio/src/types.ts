@@ -30,6 +30,7 @@ export interface DrumVoiceParams {
 export interface ChannelMixer {
   volume: number;
   pan?: number;                                       // -1.0 (L) – +1.0 (R), default 0
+  width?: number;                                     // stereo width 0 (mono) – 2 (max wide), default 1
   eq: { low: number; mid: number; high: number };
   reverb?: number;                                    // send amount 0-1
   delay?: { time: number; feedback: number; mix: number }; // mix = send amount
@@ -158,6 +159,7 @@ export interface Project {
   patterns: Pattern[];
   arrangement: ArrangementRegion[];
   arrangementBlocks?: ArrangementBlock[];
+  instrumentOrder?: string[];
 
   drumKit?: '808' | '909';
   bassPreset?: string;

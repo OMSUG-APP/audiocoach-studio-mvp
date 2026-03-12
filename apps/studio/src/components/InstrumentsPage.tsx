@@ -257,10 +257,12 @@ export function InstrumentsPage({
 
   const color = TAB_COLORS[activeTab];
   const mixerKey = MIXER_KEY[activeTab];
-  const eq = ((project.mixer as any)[mixerKey] || {}).eq || { low: 0, mid: 0, high: 0 };
+  const rawEq = ((project.mixer as any)[mixerKey] || {}).eq;
+  const eq = { low: 0, mid: 0, high: 0, ...rawEq };
   const handleEqChange = (band: 'low' | 'mid' | 'high', v: number) => {
     const ch = (project.mixer as any)[mixerKey] || {};
-    store.updateMixerChannel(mixerKey as any, { ...ch, eq: { ...ch.eq, [band]: v } });
+    const safeEq = ch.eq || { low: 0, mid: 0, high: 0 };
+    store.updateMixerChannel(mixerKey as any, { ...ch, eq: { ...safeEq, [band]: v } });
   };
 
   return (
@@ -309,49 +311,49 @@ export function InstrumentsPage({
         )}
         {activeTab === 'bass' && (
           <BassEditor
-            params={project.bassParams || { waveform: 'sawtooth', octave: 2, cutoff: 0.5, resonance: 0.2, envMod: 0.5, decay: 0.5 }}
+            params={{ waveform: 'sawtooth', octave: 2, cutoff: 0.5, resonance: 0.2, envMod: 0.5, decay: 0.5, ...project.bassParams }}
             onUpdateParam={store.updateBassParam}
             color={color}
           />
         )}
         {activeTab === 'pad' && (
           <PadEditor
-            params={project.synthParams || { octave: 4, attack: 0.5, release: 0.5, cutoff: 0.5, detune: 0.5 }}
+            params={{ octave: 4, attack: 0.5, release: 0.5, cutoff: 0.5, detune: 0.5, ...project.synthParams }}
             onUpdateParam={store.updateSynthParam}
             color={color}
           />
         )}
         {activeTab === 'polysynth' && (
           <PolySynthEditor
-            params={project.polySynthParams || { oscMix: 0.5, subLevel: 0.2, cutoff: 0.5, resonance: 0.2, envMod: 0.4, attack: 0.01, decay: 0.3, sustain: 0.5, release: 0.4, chorus: 0.3, octave: 4 }}
+            params={{ oscMix: 0.5, subLevel: 0.2, cutoff: 0.5, resonance: 0.2, envMod: 0.4, attack: 0.01, decay: 0.3, sustain: 0.5, release: 0.4, chorus: 0.3, octave: 4, ...project.polySynthParams }}
             onUpdateParam={store.updatePolySynthParam}
             color={color}
           />
         )}
         {activeTab === 'lead' && (
           <LeadSynthEditor
-            params={project.leadParams || { waveform: 'sawtooth', octave: 4, cutoff: 0.8, resonance: 0.3, attack: 0.01, decay: 0.3, portamento: 0.0 }}
+            params={{ waveform: 'sawtooth', octave: 4, cutoff: 0.8, resonance: 0.3, attack: 0.01, decay: 0.3, portamento: 0.0, ...project.leadParams }}
             onUpdateParam={store.updateLeadParam}
             color={color}
           />
         )}
         {activeTab === 'fm' && (
           <FMSynthEditor
-            params={project.fmParams || { ratio: 0.5, modIndex: 0.7, attack: 0.01, decay: 0.8, octave: 5, feedback: 0.0 }}
+            params={{ ratio: 0.5, modIndex: 0.7, attack: 0.01, decay: 0.8, octave: 5, feedback: 0.0, ...project.fmParams }}
             onUpdateParam={store.updateFMParam}
             color={color}
           />
         )}
         {activeTab === 'pluck' && (
           <PluckSynthEditor
-            params={project.pluckParams || { damping: 0.7, brightness: 0.8, body: 0.5, octave: 3 }}
+            params={{ damping: 0.7, brightness: 0.8, body: 0.5, octave: 3, ...project.pluckParams }}
             onUpdateParam={store.updatePluckParam}
             color={color}
           />
         )}
         {activeTab === 'stab' && (
           <ChordStabEditor
-            params={project.stabParams || { waveform: 'sawtooth', octave: 4, cutoff: 0.7, attack: 0.01, decay: 0.15, spread: 0.3 }}
+            params={{ waveform: 'sawtooth', octave: 4, cutoff: 0.7, attack: 0.01, decay: 0.15, spread: 0.3, ...project.stabParams }}
             onUpdateParam={store.updateStabParam}
             color={color}
           />

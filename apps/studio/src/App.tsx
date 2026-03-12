@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Component, ReactNode } from 'react';
 import { TransportBar } from './components/TransportBar';
 import { PatternEditor } from './components/PatternEditor';
 import { MixerPage } from './components/MixerPage';
@@ -10,6 +10,21 @@ import { useSampler } from './hooks/useSampler';
 import { Download } from 'lucide-react';
 import { renderToWav, ExportMode } from './utils/export';
 import { useProjectStore, useActivePattern } from './store/useProjectStore';
+
+class TabErrorBoundary extends Component<{ children: ReactNode }, { error: Error | null }> {
+  state = { error: null };
+  static getDerivedStateFromError(e: Error) { return { error: e }; }
+  render() {
+    if (this.state.error) return (
+      <div className="flex-1 flex flex-col items-center justify-center gap-3 text-[#555]">
+        <span className="text-[#EF4444] font-bold uppercase tracking-widest">Render Error</span>
+        <pre className="text-[11px] font-mono bg-[#0d0d0f] p-3 rounded max-w-lg overflow-auto">{String(this.state.error)}</pre>
+        <button onClick={() => this.setState({ error: null })} className="px-4 py-1.5 bg-[#1a1a1e] border border-[#242428] rounded text-xs uppercase tracking-widest hover:border-[#FF5F00]">Dismiss</button>
+      </div>
+    );
+    return this.props.children;
+  }
+}
 
 type MainTab = 'sequencer' | 'sampler' | 'instruments' | 'mixer' | 'arrangement';
 
@@ -23,7 +38,7 @@ export default function App() {
 
   const activePattern = useActivePattern();
   const sampler = useSampler(project.mixer.sampler);
-  const { isPlaying, currentStep, currentDrum2Step, currentPluckStep, currentPolySynthStep, togglePlay, analysers, stereoAnalysers, spectrumAnalysers } = useAudioEngine(project, activePatternId, sampler.schedulePadAtTime);
+  const { isPlaying, currentStep, currentDrum2Step, currentPluckStep, currentPolySynthStep, currentBar, togglePlay, analysers, stereoAnalysers, spectrumAnalysers } = useAudioEngine(project, activePatternId, sampler.schedulePadAtTime);
 
   // Spacebar Play/Pause
   useEffect(() => {
@@ -61,6 +76,10 @@ export default function App() {
         { mode: 'synth',     label: 'synth'     },
         { mode: 'polySynth', label: 'poly'      },
         { mode: 'drum2',     label: 'drum2'     },
+        { mode: 'lead',      label: 'lead'      },
+        { mode: 'fm',        label: 'fm'        },
+        { mode: 'pluck',     label: 'pluck'     },
+        { mode: 'stab',      label: 'stab'      },
       ];
       for (const { mode, label } of stems) {
         const blob = await renderToWav(project, activePattern, mode, sampler.samplerBuffers, sampler.pads);
@@ -119,8 +138,6 @@ export default function App() {
         onTogglePlay={togglePlay}
         bpm={project.bpm}
         onBpmChange={store.setBpm}
-        swing={project.swing}
-        onSwingChange={store.setSwing}
         patterns={project.patterns}
         activePatternId={activePatternId}
         onSelectPattern={store.setActivePatternId}
@@ -147,6 +164,7 @@ export default function App() {
       </div>
 
       <div className="flex flex-1 overflow-hidden p-4 gap-4">
+        <TabErrorBoundary>
         <div className="flex-4 flex flex-col overflow-hidden">
 
           {activeTab === 'sequencer' ? (
@@ -231,6 +249,8 @@ export default function App() {
                 onSetStabSteps={store.setStabSteps}
                 stabPoweredOn={project.poweredOn?.stab ?? true}
                 onToggleStabPower={() => store.togglePower('stab')}
+                instrumentOrder={project.instrumentOrder}
+                onReorderInstrument={store.setInstrumentOrder}
               />
             </div>
           ) : activeTab === 'sampler' ? (
@@ -261,11 +281,12 @@ export default function App() {
             </div>
           ) : (
             <div className="flex-1 overflow-hidden">
-              <ArrangementPage />
+              <ArrangementPage isPlaying={isPlaying} currentBar={currentBar} currentStep={currentStep} />
             </div>
           )}
 
         </div>
+        </TabErrorBoundary>
       </div>
     </div>
   );

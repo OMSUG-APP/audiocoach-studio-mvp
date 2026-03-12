@@ -12,6 +12,7 @@ interface ProjectStore {
   setProjectName: (name: string) => void;
   setBpm: (bpm: number) => void;
   setSwing: (swing: number) => void;
+  setInstrumentOrder: (order: string[]) => void;
 
   // Pattern actions
   setActivePatternId: (id: string) => void;
@@ -97,6 +98,7 @@ export const useProjectStore = create<ProjectStore>()(
       setProjectName: (name) => set((s) => ({ project: { ...s.project, name } })),
       setBpm: (bpm) => set((s) => ({ project: { ...s.project, bpm } })),
       setSwing: (swing) => set((s) => ({ project: { ...s.project, swing } })),
+      setInstrumentOrder: (order) => set((s) => ({ project: { ...s.project, instrumentOrder: order } })),
 
       setActivePatternId: (id) => set({ activePatternId: id }),
 

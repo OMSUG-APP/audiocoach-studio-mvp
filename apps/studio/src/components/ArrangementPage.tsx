@@ -10,7 +10,13 @@ const PATTERN_COLORS = [
   '#8B5CF6', '#EC4899', '#06B6D4', '#84CC16',
 ];
 
-export function ArrangementPage() {
+interface ArrangementPageProps {
+  isPlaying?: boolean;
+  currentBar?: number;
+  currentStep?: number;
+}
+
+export function ArrangementPage({ isPlaying = false, currentBar = 0, currentStep = 0 }: ArrangementPageProps) {
   const project = useProjectStore(s => s.project);
   const store = useProjectStore();
   const blocks = project.arrangementBlocks || [];
@@ -131,8 +137,8 @@ export function ArrangementPage() {
       </div>
 
       {/* Bar ruler */}
-      <div className="flex overflow-x-auto bg-[#0a0a0b] border-b border-[#1a1a1e]" style={{ minHeight: '20px' }}>
-        <div className="flex" style={{ width: `${totalBars * BAR_WIDTH}px`, flexShrink: 0 }}>
+      <div className="flex overflow-x-auto bg-[#0a0a0b] border-b border-[#1a1a1e] relative" style={{ minHeight: '20px' }}>
+        <div className="flex relative" style={{ width: `${totalBars * BAR_WIDTH}px`, flexShrink: 0 }}>
           {Array.from({ length: totalBars }).map((_, i) => (
             <div
               key={i}
@@ -142,6 +148,17 @@ export function ArrangementPage() {
               {i + 1}
             </div>
           ))}
+          {isPlaying && (
+            <div
+              className="absolute top-0 bottom-0 pointer-events-none z-30"
+              style={{
+                left: ((currentBar % totalBars) + currentStep / 16) * BAR_WIDTH,
+                width: 2,
+                background: '#FF5F00',
+                boxShadow: '0 0 6px rgba(255,95,0,0.6)',
+              }}
+            />
+          )}
         </div>
       </div>
 
@@ -167,6 +184,19 @@ export function ArrangementPage() {
               style={{ left: i * BAR_WIDTH, borderColor: i % 4 === 0 ? '#242428' : '#1a1a1e' }}
             />
           ))}
+
+          {/* Playback cursor */}
+          {isPlaying && (
+            <div
+              className="absolute top-0 bottom-0 pointer-events-none z-30"
+              style={{
+                left: ((currentBar % totalBars) + currentStep / 16) * BAR_WIDTH,
+                width: 2,
+                background: '#FF5F00',
+                boxShadow: '0 0 8px rgba(255,95,0,0.8)',
+              }}
+            />
+          )}
 
           {/* Blocks */}
           {blocks.map(block => {

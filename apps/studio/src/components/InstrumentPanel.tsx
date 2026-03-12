@@ -10,6 +10,10 @@ interface InstrumentPanelProps {
   defaultExpanded?: boolean;
   color?: string;
   children: React.ReactNode;
+  onMoveUp?: () => void;
+  onMoveDown?: () => void;
+  isFirst?: boolean;
+  isLast?: boolean;
 }
 
 export const InstrumentPanel: React.FC<InstrumentPanelProps> = ({
@@ -20,6 +24,10 @@ export const InstrumentPanel: React.FC<InstrumentPanelProps> = ({
   defaultExpanded = true,
   color = '#FF5F00',
   children,
+  onMoveUp,
+  onMoveDown,
+  isFirst = true,
+  isLast = true,
 }) => {
   const collapsed = useProjectStore(s => s.collapsedPanels[id] ?? !defaultExpanded);
   const setCollapsedPanel = useProjectStore(s => s.setCollapsedPanel);
@@ -45,6 +53,25 @@ export const InstrumentPanel: React.FC<InstrumentPanelProps> = ({
         >
           {title}
         </span>
+        {/* Reorder buttons */}
+        {(onMoveUp || onMoveDown) && (
+          <div className="flex flex-col gap-0.5 mr-1" onClick={e => e.stopPropagation()}>
+            <button
+              onClick={onMoveUp}
+              disabled={isFirst}
+              className="w-4 h-3 flex items-center justify-center text-[9px] rounded transition-colors"
+              style={isFirst ? { color: '#333', cursor: 'default' } : { color: '#8A8A94', hover: 'color: #F0F0F2' }}
+              title="Move up"
+            >▲</button>
+            <button
+              onClick={onMoveDown}
+              disabled={isLast}
+              className="w-4 h-3 flex items-center justify-center text-[9px] rounded transition-colors"
+              style={isLast ? { color: '#333', cursor: 'default' } : { color: '#8A8A94' }}
+              title="Move down"
+            >▼</button>
+          </div>
+        )}
         {/* Power LED */}
         <button
           onClick={(e) => { e.stopPropagation(); onTogglePower(); }}

@@ -101,6 +101,7 @@ export const INITIAL_PROJECT: Project = {
   patterns: [INITIAL_PATTERN('p1', 'Pattern 1')],
   arrangement: [{ id: 'a1', patternId: 'p1', startStep: 0, length: 16 }],
   arrangementBlocks: [{ id: 'ab1', patternId: 'p1', startBar: 0, lengthBars: 4 }],
+  instrumentOrder: ['drums', 'drum2', 'sampler', 'bass', 'pad', 'polySynth', 'lead', 'fm', 'pluck', 'stab'],
   drumKit: '808',
   polySynthParams: INITIAL_POLY_SYNTH_PARAMS,
   poweredOn: {

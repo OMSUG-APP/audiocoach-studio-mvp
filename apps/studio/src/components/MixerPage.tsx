@@ -253,6 +253,7 @@ function KnobRow({
 const DEFAULT_CHANNEL: ChannelMixer = {
   volume: 0.8,
   pan: 0,
+  width: 1,
   eq: { low: 0, mid: 0, high: 0 },
   reverb: 0,
   delay: { time: 0.3, feedback: 0.3, mix: 0 },
@@ -279,6 +280,8 @@ const ChannelStrip: React.FC<ChannelStripProps> = ({ label, color, channel, onCh
     onChange({ ...ch, eq: { ...eq, [band]: v } });
   const setRev = (v: number) => onChange({ ...ch, reverb: v });
   const setDly = (v: number) => onChange({ ...ch, delay: { ...delay, mix: v } });
+  const setDrv = (v: number) => onChange({ ...ch, driveSend: v });
+  const setWid = (v: number) => onChange({ ...ch, width: v });
   const setVol = (v: number) => onChange({ ...ch, volume: v });
   const setPan = (v: number) => onChange({ ...ch, pan: v });
 
@@ -297,14 +300,17 @@ const ChannelStrip: React.FC<ChannelStripProps> = ({ label, color, channel, onCh
 
       {/* EQ + Sends knobs */}
       <div className="flex flex-col gap-1 px-3 pt-3 pb-2 w-full border-b border-[#242428]">
-        <KnobRow label="H"   value={eq.high}       min={-12} max={12} step={0.5}  color={color} onChange={v => setEq('high', v)} />
-        <KnobRow label="M"   value={eq.mid}        min={-12} max={12} step={0.5}  color={color} onChange={v => setEq('mid',  v)} />
-        <KnobRow label="L"   value={eq.low}        min={-12} max={12} step={0.5}  color={color} onChange={v => setEq('low',  v)} />
+        <KnobRow label="H"   value={eq.high ?? 0}   min={-12} max={12} step={0.5}  color={color} onChange={v => setEq('high', v)} />
+        <KnobRow label="M"   value={eq.mid  ?? 0}  min={-12} max={12} step={0.5}  color={color} onChange={v => setEq('mid',  v)} />
+        <KnobRow label="L"   value={eq.low  ?? 0}  min={-12} max={12} step={0.5}  color={color} onChange={v => setEq('low',  v)} />
         <div className="h-px bg-[#1e1e24] my-0.5" />
         <KnobRow label="PAN" value={ch.pan ?? 0}   min={-1}  max={1}  step={0.01} color={color} onChange={setPan} />
         <div className="h-px bg-[#1e1e24] my-0.5" />
-        <KnobRow label="DLY" value={delay.mix}     min={0}   max={1}  step={0.01} color={color} onChange={setDly} />
-        <KnobRow label="REV" value={ch.reverb ?? 0} min={0}  max={1}  step={0.01} color={color} onChange={setRev} />
+        <KnobRow label="DLY" value={delay.mix ?? 0}     min={0}   max={1}  step={0.01} color={color} onChange={setDly} />
+        <KnobRow label="REV" value={ch.reverb ?? 0}      min={0}   max={1}  step={0.01} color={color} onChange={setRev} />
+        <KnobRow label="DRV" value={ch.driveSend ?? 0}   min={0}   max={1}  step={0.01} color={color} onChange={setDrv} />
+        <div className="h-px bg-[#1e1e24] my-0.5" />
+        <KnobRow label="WID" value={ch.width ?? 1}       min={0}   max={2}  step={0.01} color={color} onChange={setWid} />
       </div>
 
       {/* Volume — fader left, stereo VU bar right */}
@@ -354,12 +360,12 @@ function MasterStrip({
 
       <div className="flex flex-col gap-1 px-3 pt-3 pb-2 w-full border-b border-[#242428]">
         <span className="text-[11px] uppercase tracking-widest text-[#333] text-center mb-0.5">Comp</span>
-        <KnobRow label="THR" value={comp.threshold} min={-40} max={0}   step={1}     color="#FF5F00" onChange={v => onUpdate({ compressor: { ...comp, threshold: v } })} />
-        <KnobRow label="RAT" value={comp.ratio}     min={1}   max={20}  step={0.5}   color="#FF5F00" onChange={v => onUpdate({ compressor: { ...comp, ratio: v } })} />
-        <KnobRow label="ATK" value={comp.attack}    min={0}   max={0.1} step={0.001} color="#FF5F00" onChange={v => onUpdate({ compressor: { ...comp, attack: v } })} />
-        <KnobRow label="REL" value={comp.release}   min={0}   max={2}   step={0.01}  color="#FF5F00" onChange={v => onUpdate({ compressor: { ...comp, release: v } })} />
+        <KnobRow label="THR" value={comp.threshold ?? -12}  min={-40} max={0}   step={1}     color="#FF5F00" onChange={v => onUpdate({ compressor: { ...comp, threshold: v } })} />
+        <KnobRow label="RAT" value={comp.ratio     ?? 4}    min={1}   max={20}  step={0.5}   color="#FF5F00" onChange={v => onUpdate({ compressor: { ...comp, ratio: v } })} />
+        <KnobRow label="ATK" value={comp.attack    ?? 0.003}min={0}   max={0.1} step={0.001} color="#FF5F00" onChange={v => onUpdate({ compressor: { ...comp, attack: v } })} />
+        <KnobRow label="REL" value={comp.release   ?? 0.25} min={0}   max={2}   step={0.01}  color="#FF5F00" onChange={v => onUpdate({ compressor: { ...comp, release: v } })} />
         <div className="h-px bg-[#1e1e24] my-0.5" />
-        <span className="text-[10px] uppercase tracking-widest text-[#333] text-center">Limiter ON</span>
+        <span className="text-[10px] uppercase tracking-widest text-[#333] text-center">Limiter OFF</span>
       </div>
 
       <div className="flex flex-col items-center gap-1 pt-3 pb-2 px-3 w-full">
@@ -423,6 +429,19 @@ export function MixerPage({
           <span className="text-[15px] font-bold uppercase tracking-widest text-[#FF5F00]">Mixer</span>
         </div>
 
+        {/* Master spectrum — full width at top */}
+        <div className="border-b border-[#242428] bg-[#0d0d0f] px-4 py-2 flex-shrink-0">
+          <div className="flex items-center gap-3 mb-1">
+            <span className="text-[11px] font-bold uppercase tracking-widest text-[#555]">Master Spectrum</span>
+          </div>
+          <SpectrumBar
+            getAnalyser={() => spectrumAnalysers?.current?.master ?? null}
+            color="#FF5F00"
+            width={900}
+            height={48}
+          />
+        </div>
+
         {/* Channel strips row */}
         <div className="flex-1 overflow-x-auto overflow-y-hidden p-4">
           <div className="flex gap-2 min-w-max h-full">
@@ -457,18 +476,6 @@ export function MixerPage({
           </div>
         </div>
 
-        {/* Master spectrum — full width below strips */}
-        <div className="border-t border-[#242428] bg-[#0d0d0f] px-4 py-3 flex-shrink-0">
-          <div className="flex items-center gap-3 mb-2">
-            <span className="text-[11px] font-bold uppercase tracking-widest text-[#555]">Master Spectrum</span>
-          </div>
-          <SpectrumBar
-            getAnalyser={() => spectrumAnalysers?.current?.master ?? null}
-            color="#FF5F00"
-            width={900}
-            height={56}
-          />
-        </div>
       </div>
     </>
   );
